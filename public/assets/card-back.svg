@@ -1,0 +1,26 @@
+<svg width="320" height="520" viewBox="0 0 320 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="10" width="300" height="500" rx="30" fill="url(#bg)" stroke="url(#stroke)" stroke-width="2"/>
+  <rect x="28" y="28" width="264" height="464" rx="22" stroke="rgba(255,255,255,.52)" stroke-width="1.2"/>
+  <path d="M160 130c34 22 54 58 54 96s-20 74-54 96c14-24 20-56 20-96s-6-72-20-96Z" fill="rgba(255,255,255,.92)"/>
+  <path d="M160 130c-34 22-54 58-54 96s20 74 54 96c-14-24-20-56-20-96s6-72 20-96Z" fill="rgba(255,255,255,.22)"/>
+  <path d="M160 78l11 28 29 2-22 19 7 29-25-16-25 16 7-29-22-19 29-2 11-28Z" fill="#F8DFA7"/>
+  <path d="M160 364l8 20 22 2-17 14 5 22-18-12-18 12 5-22-17-14 22-2 8-20Z" fill="#F8DFA7"/>
+  <circle cx="82" cy="162" r="4" fill="#F8DFA7"/>
+  <circle cx="238" cy="162" r="4" fill="#F8DFA7"/>
+  <circle cx="82" cy="356" r="4" fill="#F8DFA7"/>
+  <circle cx="238" cy="356" r="4" fill="#F8DFA7"/>
+  <path d="M74 260c40-44 132-44 172 0-40 44-132 44-172 0Z" stroke="rgba(248,223,167,.74)" stroke-width="2"/>
+  <circle cx="160" cy="260" r="30" stroke="rgba(255,255,255,.78)" stroke-width="1.5"/>
+  <defs>
+    <linearGradient id="bg" x1="28" y1="19" x2="322" y2="462" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5F5A9E"/>
+      <stop offset=".46" stop-color="#C881A8"/>
+      <stop offset="1" stop-color="#283A66"/>
+    </linearGradient>
+    <linearGradient id="stroke" x1="24" y1="9" x2="298" y2="497" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF8E8"/>
+      <stop offset=".48" stop-color="#F8DFA7"/>
+      <stop offset="1" stop-color="#B9D8FF"/>
+    </linearGradient>
+  </defs>
+</svg>

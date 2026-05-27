@@ -1,0 +1,38 @@
+<svg width="320" height="520" viewBox="0 0 320 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="权杖国王">
+  <rect x="10" y="10" width="300" height="500" rx="30" fill="url(#paper)" stroke="url(#edge)" stroke-width="2"/>
+  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.34)" stroke="rgba(255,255,255,.72)"/>
+  <circle cx="56" cy="74" r="22" fill="#C56B74" opacity=".14"/>
+  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".18"/>
+  <text x="160" y="62" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="22" font-weight="700" fill="#2C2439">权杖国王</text>
+  <text x="160" y="86" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="600" fill="#7E718D">King of Wands</text>
+  
+  <text x="50" y="125" text-anchor="middle" font-family="Georgia,serif" font-size="32" font-weight="700" fill="#C56B74">King</text>
+  <text x="270" y="410" text-anchor="middle" font-family="Georgia,serif" font-size="32" font-weight="700" fill="#C56B74">King</text>
+  <circle cx="160" cy="252" r="102" fill="#C56B74" opacity=".07"/>
+  <rect x="76" y="132" width="168" height="236" rx="32" fill="rgba(255,255,255,.44)" stroke="#C56B74" stroke-width="1.5" opacity=".74"/>
+  
+  
+  <g>
+    <circle cx="160" cy="214" r="34" fill="#C56B74" opacity=".2" stroke="#C56B74" stroke-width="2"/>
+    <path d="M128 190l18 16 14-22 14 22 18-16v38h-64v-38Z" fill="#F8DFA7" stroke="#C56B74" stroke-width="2"/>
+    
+    
+    <path d="M104 346c14-54 42-86 56-86s42 32 56 86H104Z" fill="#C56B74" opacity=".16" stroke="#C56B74" stroke-width="2"/>
+    <g opacity="1"><path d="M152 336L168 288" stroke="#C56B74" stroke-width="5" stroke-linecap="round"/><circle cx="170" cy="286" r="5" fill="#F8DFA7"/></g>
+  </g>
+  <text x="160" y="398" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">稳定输出 · 负责</text>
+  <text x="160" y="448" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#C56B74">小阿卡那</text>
+  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">行动掌控</text>
+  <defs>
+    <linearGradient id="paper" x1="22" y1="18" x2="302" y2="510" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF8"/>
+      <stop offset=".52" stop-color="#F8EEF7"/>
+      <stop offset="1" stop-color="#EAF4FF"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="14" y1="10" x2="310" y2="510" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF8E8"/>
+      <stop offset=".5" stop-color="#F8DFA7"/>
+      <stop offset="1" stop-color="#C56B74"/>
+    </linearGradient>
+  </defs>
+</svg>
