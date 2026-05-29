@@ -30,18 +30,115 @@ const questions = {
   emotion: ["最近为什么总觉得很累？", "我该怎么让自己轻松一点？", "今天我的情绪想告诉我什么？"]
 };
 
+const ritualLines = [
+  "星月正在感应你的问题…",
+  "牌阵开始对齐…",
+  "AI 正在读取牌意…",
+  "即将为你揭晓…"
+];
+
 const state = {
   step: "home",
   theme: "",
   mood: "",
   question: "",
   spread: "three",
+  quickPath: false,
   selectedSlots: [],
   reading: null,
-  revealed: []
+  revealed: [],
+  reportExpanded: false
 };
 
 const spreadCount = () => ({ one: 1, three: 3, four: 4 }[state.spread] || 3);
+
+function buzz(pattern = 8) {
+  if (!navigator.vibrate) return;
+  navigator.vibrate(Array.isArray(pattern) ? pattern : [pattern]);
+}
+
+function showRitualOverlay() {
+  document.querySelector(".ritual-overlay")?.remove();
+  const el = document.createElement("div");
+  el.className = "ritual-overlay";
+  el.innerHTML = `
+    <div class="ritual-card" role="status" aria-live="polite">
+      <div class="ritual-orbit" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="ritual-line" data-ritual-line>${ritualLines[0]}</p>
+      <div class="ritual-bar" aria-hidden="true"><span data-ritual-bar style="width:18%"></span></div>
+    </div>
+  `;
+  document.body.append(el);
+  let index = 0;
+  el._ritualTimer = setInterval(() => {
+    index = (index + 1) % ritualLines.length;
+    el.querySelector("[data-ritual-line]").textContent = ritualLines[index];
+    el.querySelector("[data-ritual-bar]").style.width = `${Math.min(96, 22 + index * 24)}%`;
+  }, 2200);
+  return el;
+}
+
+function hideRitualOverlay(el) {
+  clearInterval(el?._ritualTimer);
+  el?.remove();
+}
+
+function startQuickDraw() {
+  state.theme = "relationship";
+  state.mood = "lost";
+  state.question = questions.relationship[0];
+  state.spread = "three";
+  state.quickPath = true;
+  state.reading = null;
+  state.revealed = [];
+  state.selectedSlots = [];
+  state.reportExpanded = false;
+  buzz([8, 18, 8]);
+  go("shuffle");
+}
+
+function redrawSameQuestion() {
+  state.selectedSlots = [];
+  state.reading = null;
+  state.revealed = [];
+  state.reportExpanded = false;
+  buzz(10);
+  toast("同一问题，新的牌局 ✦");
+  go("shuffle");
+}
+
+function sectionText(reading, title) {
+  return reading.summary?.sections?.find((item) => item.title === title)?.text || "";
+}
+
+function sectionListFirst(reading, title) {
+  const section = reading.summary?.sections?.find((item) => item.title === title);
+  if (section?.list?.length) return section.list[0];
+  return section?.text || "";
+}
+
+function reportTeaser(reading) {
+  const compact = reading.summary?.aiCompact;
+  return {
+    keyword: reading.summary?.keyword || "星月指引",
+    summary:
+      sectionText(reading, "此刻的状态")
+      || compact?.presentState
+      || sectionText(reading, "总结")
+      || compact?.directAnswer
+      || "",
+    star:
+      sectionText(reading, "最后想留给你的一句话")
+      || compact?.closingLine
+      || sectionText(reading, "今日星语")
+      || "愿你温柔且清醒地前行。",
+    action:
+      sectionListFirst(reading, "接下来你可以温柔地尝试")
+      || reading.summary?.action
+      || sectionText(reading, "行动建议")
+      || ""
+  };
+}
 
 function render() {
   const screens = {
@@ -94,26 +191,23 @@ function renderHome() {
         <h1>星月少女塔罗馆</h1>
         <p class="lede">把心里的问题交给今晚的牌。这里不会替你做决定，只会陪你更温柔、更清醒地看见自己。</p>
         <div class="actions">
-          <button class="btn primary" data-next="theme">开始抽牌</button>
-          <button class="btn secondary" data-demo>快速体验</button>
+          <button class="btn primary" data-next="theme">完整流程</button>
           <button class="btn secondary" data-history>抽卡记录</button>
         </div>
       </div>
-      <div class="moon-deck" aria-hidden="true">
-        <span class="hero-card"></span>
-        <span class="hero-card"></span>
-        <span class="hero-card"></span>
-      </div>
+      <button class="moon-deck tap-deck" type="button" aria-label="点击卡牌，立即开始抽牌">
+        <span class="hero-card c1"></span>
+        <span class="hero-card c2"></span>
+        <span class="hero-card c3"></span>
+        <span class="tap-hint">点击卡牌开始 ✦</span>
+      </button>
     </div>
   `;
-  shell.querySelector("[data-next]").addEventListener("click", () => go("theme"));
-  shell.querySelector("[data-demo]").addEventListener("click", () => {
-    state.theme = "relationship";
-    state.mood = "calmChaos";
-    state.question = "他现在对我是怎样的感觉？";
-    state.spread = "three";
-    go("shuffle");
+  shell.querySelector("[data-next]").addEventListener("click", () => {
+    state.quickPath = false;
+    go("theme");
   });
+  shell.querySelector(".tap-deck").addEventListener("click", startQuickDraw);
   shell.querySelector("[data-history]").addEventListener("click", () => go("history"));
   return screen(shell);
 }
@@ -124,6 +218,7 @@ function renderTheme() {
   themes.forEach(([id, title, desc]) => {
     grid.append(option(title, desc, state.theme === id, () => {
       state.theme = id;
+      state.quickPath = false;
       setTimeout(() => go("mood"), 120);
     }));
   });
@@ -236,7 +331,9 @@ function renderShuffle() {
   });
   ["pointerup", "pointerleave", "pointercancel"].forEach((event) => deck.addEventListener(event, reset));
   wrap.querySelector("[data-skip]").addEventListener("click", complete);
-  wrap.querySelector("[data-back]").addEventListener("click", () => go("spread"));
+  wrap.querySelector("[data-back]").addEventListener("click", () => {
+    go(state.quickPath ? "home" : "spread");
+  });
   return screen(wrap);
 }
 
@@ -246,7 +343,7 @@ function renderPick() {
   body.innerHTML = `
     <div class="hint">牌已经洗好并摊成扇形。请在同一个界面里点选 ${spreadCount()} 张牌，抽中的牌会从牌阵里轻轻上浮。</div>
     <div class="fan-table" aria-label="扇形塔罗牌阵">
-      <div class="pick-count">已选择 <strong>0</strong> / ${spreadCount()}</div>
+      <div class="pick-count" data-pick-count>已选择 <strong>0</strong> / ${spreadCount()}</div>
       <div class="fan-deck"></div>
     </div>
     <div class="actions">
@@ -256,8 +353,26 @@ function renderPick() {
   `;
   const grid = body.querySelector(".fan-deck");
   const next = body.querySelector("[data-next]");
+  const countWrap = body.querySelector("[data-pick-count]");
   const countLabel = body.querySelector(".pick-count strong");
   const fanSize = 23;
+  let wasComplete = false;
+  const updatePickCount = () => {
+    const done = state.selectedSlots.length === spreadCount();
+    countLabel.textContent = state.selectedSlots.length;
+    countWrap.classList.toggle("is-complete", done);
+    next.disabled = !done;
+    if (done) {
+      next.classList.add("pulse-ready");
+      if (!wasComplete) {
+        toast("选好了！点击查看牌面 ✦");
+        buzz([8, 16, 8]);
+      }
+    } else {
+      next.classList.remove("pulse-ready");
+    }
+    wasComplete = done;
+  };
   Array.from({ length: fanSize }, (_, index) => {
     const card = document.createElement("button");
     card.className = "pick-card";
@@ -276,100 +391,257 @@ function renderPick() {
         card.classList.remove("selected");
         state.selectedSlots = state.selectedSlots.filter((item) => item !== index);
       } else if (state.selectedSlots.length < spreadCount()) {
-        card.classList.add("selected");
+        card.classList.add("selected", "just-picked");
         state.selectedSlots.push(index);
+        setTimeout(() => card.classList.remove("just-picked"), 420);
+        buzz(8);
       }
       card.dataset.order = state.selectedSlots.indexOf(index) + 1 || "";
       grid.querySelectorAll(".pick-card").forEach((item, itemIndex) => {
         item.dataset.order = state.selectedSlots.indexOf(itemIndex) + 1 || "";
       });
-      countLabel.textContent = state.selectedSlots.length;
-      next.disabled = state.selectedSlots.length !== spreadCount();
+      updatePickCount();
     });
     grid.append(card);
   });
+  updatePickCount();
   body.querySelector("[data-back]").addEventListener("click", () => go("shuffle"));
   next.addEventListener("click", fetchReading);
   return screen(panel("抽出回应你的牌", "不要想太久，第一眼被吸引的那张，通常最诚实。", body, "5 / 5"));
 }
 
 async function fetchReading() {
-  app.querySelector("[data-next]").disabled = true;
-  toast("星光正在整理牌面...");
-  const response = await fetch("/api/reading", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      theme: state.theme,
-      mood: state.mood,
-      question: state.question,
-      spread: state.spread,
-      selectedSlots: state.selectedSlots
-    })
+  const button = app.querySelector("[data-next]");
+  if (button) button.disabled = true;
+  const overlay = showRitualOverlay();
+  buzz(12);
+  try {
+    const response = await fetch("/api/reading", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        theme: state.theme || "relationship",
+        mood: state.mood || "lost",
+        question: state.question || questions.relationship[0],
+        spread: state.spread,
+        selectedSlots: state.selectedSlots
+      })
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    state.reading = await response.json();
+    if (!state.reading?.cards?.length) throw new Error("empty reading");
+    state.revealed = state.reading.cards.map(() => false);
+    state.reportExpanded = false;
+    hideRitualOverlay(overlay);
+    toast("牌已回应你，请逐张翻开 ✦");
+    buzz([10, 24, 10]);
+    go("reveal");
+  } catch {
+    hideRitualOverlay(overlay);
+    toast("星光有点弱，请再试一次。");
+    if (button) button.disabled = false;
+  }
+}
+
+function nextRevealIndex() {
+  if (!state.revealed?.length) return 0;
+  return state.revealed.findIndex((open) => !open);
+}
+
+function updateRevealGuide(wrap) {
+  const next = nextRevealIndex();
+  const guideEl = wrap.querySelector("[data-reveal-guide]");
+  const hintEl = wrap.querySelector(".reveal-table-hint");
+  wrap.querySelectorAll(".reveal-slot").forEach((slot, index) => {
+    const open = Boolean(state.revealed[index]);
+    slot.classList.toggle("is-revealed", open);
+    slot.classList.toggle("is-next", !open && index === next);
+    slot.classList.toggle("is-waiting", !open && next !== -1 && index !== next);
   });
-  state.reading = await response.json();
-  state.revealed = state.reading.cards.map(() => false);
-  go("reveal");
+  if (next === -1) {
+    if (guideEl) guideEl.textContent = "牌面已全部呈现。你可以静静感受每一张牌带来的讯息。";
+    if (hintEl) hintEl.textContent = "点击下方按钮，阅读 AI 为你写下的完整解读";
+    return;
+  }
+  const position = state.reading.cards[next].position;
+  if (guideEl) guideEl.textContent = `牌师提示：请先翻开「${position}」`;
+  if (hintEl) hintEl.textContent = "轻触高亮的牌背，像在桌面上亲手翻开";
+}
+
+function flipRevealCard({ index, card, el, slot, wrap, reportButton, isMajor, isReversed, syncProgress }) {
+  if (state.revealed[index] || el.dataset.flipping === "1") return;
+  el.dataset.flipping = "1";
+  state.revealed[index] = true;
+  el.classList.add("revealed", "is-flipping");
+  slot.classList.add("is-revealed");
+  el.setAttribute("aria-label", `${card.position}，已翻开`);
+  syncProgress();
+  updateRevealGuide(wrap);
+  void el.offsetWidth;
+
+  const finishFlip = () => {
+    if (el.dataset.flipping !== "1") return;
+    el.dataset.flipping = "0";
+    el.classList.remove("is-flipping");
+    const allOpen = state.revealed.every(Boolean);
+    reportButton.disabled = !allOpen;
+    if (isMajor) {
+      el.classList.add("burst");
+      slot.classList.add("slot-burst");
+      toast("✦ 大阿卡那降临 — 能量格外清晰");
+      buzz([10, 30, 12]);
+    } else if (isReversed) {
+      toast("逆位是温柔提醒，不是坏预兆");
+      buzz(6);
+    } else {
+      buzz(8);
+    }
+    if (allOpen) {
+      reportButton.classList.add("pulse-ready");
+      toast("全部翻开了！可以查看解读 ✦");
+      buzz([8, 20, 8]);
+    }
+  };
+
+  const inner = el.querySelector(".tarot-inner");
+  let done = false;
+  const onTransitionEnd = (event) => {
+    if (event.target !== inner || event.propertyName !== "transform") return;
+    if (done) return;
+    done = true;
+    inner.removeEventListener("transitionend", onTransitionEnd);
+    finishFlip();
+  };
+  inner.addEventListener("transitionend", onTransitionEnd);
+  setTimeout(() => {
+    if (!done) {
+      done = true;
+      inner.removeEventListener("transitionend", onTransitionEnd);
+      finishFlip();
+    }
+  }, 900);
 }
 
 function renderReveal() {
+  const spreadId = state.spread || "three";
+  const total = state.reading.cards.length;
+  if (!state.revealed?.length || state.revealed.length !== total) {
+    state.revealed = state.reading.cards.map(() => false);
+  }
   const wrap = document.createElement("div");
-  wrap.className = "shell reveal-layout";
+  wrap.className = `shell reveal-layout reveal-layout--${spreadId}`;
   wrap.innerHTML = `
-    <div class="panel">
+    <div class="panel reveal-intro">
       <p class="eyebrow">Reveal</p>
       <h2>逐张翻开今晚的牌</h2>
-      <p class="lede">每张牌都对应一个位置。全部翻开后，就可以查看 AI 为你写下的完整解读。</p>
+      <p class="lede">像真实占卜桌面一样，由牌师引导你一张一张翻开。每张牌对应一个牌位，全部揭开后即可阅读完整解读。</p>
+      <p class="reveal-guide" data-reveal-guide aria-live="polite"></p>
+      <div class="reveal-progress" aria-live="polite">
+        <span class="reveal-progress-label">已翻开 <strong data-revealed-count>0</strong> / ${total}</span>
+        <span class="reveal-progress-track" aria-hidden="true"><span class="reveal-progress-fill" data-reveal-fill></span></span>
+      </div>
     </div>
-    <div class="reading-cards"></div>
-    <div class="actions">
-      <button class="btn secondary" data-again>重新抽卡</button>
+    <div class="reveal-table">
+      <div class="reveal-table-glow" aria-hidden="true"></div>
+      <div class="reading-cards reveal-deck reveal-deck--${spreadId}"></div>
+      <p class="reveal-table-hint">轻触尚未翻开的牌背</p>
+    </div>
+    <div class="actions reveal-actions">
+      <button class="btn secondary" data-redraw>同题再抽</button>
+      <button class="btn secondary" data-newq>新的问题</button>
       <button class="btn primary" data-report disabled>查看 AI 解读</button>
     </div>
   `;
-  const cards = wrap.querySelector(".reading-cards");
+  const deck = wrap.querySelector(".reading-cards");
   const reportButton = wrap.querySelector("[data-report]");
+  const countEl = wrap.querySelector("[data-revealed-count]");
+  const fillEl = wrap.querySelector("[data-reveal-fill]");
+
+  const syncProgress = () => {
+    const opened = state.revealed.filter(Boolean).length;
+    countEl.textContent = String(opened);
+    fillEl.style.width = `${(opened / total) * 100}%`;
+    wrap.classList.toggle("reveal-complete", opened === total);
+  };
+
   state.reading.cards.forEach((card, index) => {
+    const slot = document.createElement("div");
+    slot.className = "reveal-slot";
+    slot.style.setProperty("--slot", index);
+    slot.style.setProperty("--stagger", index);
+    if (state.revealed[index]) slot.classList.add("is-revealed");
+
+    const label = document.createElement("span");
+    label.className = "slot-label";
+    label.textContent = card.position;
+
     const el = document.createElement("button");
-    el.className = `tarot-card ${state.revealed[index] ? "revealed" : ""}`;
+    const isMajor = card.arcana === "大阿卡那";
+    const isReversed = card.orientation === "逆位";
+    el.type = "button";
+    el.style.setProperty("--stagger", index);
+    el.className = [
+      "tarot-card",
+      state.revealed[index] ? "revealed" : "",
+      isMajor ? "is-major" : "",
+      isReversed ? "is-reversed" : ""
+    ].filter(Boolean).join(" ");
+    el.setAttribute("aria-label", `${card.position}，${state.revealed[index] ? "已翻开" : "点击翻开"}`);
     el.innerHTML = `
       <div class="tarot-inner">
-        <div class="face back"></div>
+        <div class="face back">
+          <span class="back-shimmer" aria-hidden="true"></span>
+          <span class="card-tap-hint">翻开</span>
+        </div>
         <div class="face front">
-          <div class="position">${card.position}</div>
+          <div class="position">${escapeHtml(card.position)}</div>
           <img class="card-image" src="${card.image}" alt="${card.name} ${card.nameEn} 卡面图" draggable="false">
-          <h3 class="card-name">${card.name}</h3>
-          <div class="orientation">${card.orientation}</div>
-          <p class="card-hint">${card.shortHint}</p>
+          <h3 class="card-name">${escapeHtml(card.name)}</h3>
+          <div class="orientation">${escapeHtml(card.orientation)}</div>
+          <p class="card-hint">${escapeHtml(card.shortHint)}</p>
         </div>
       </div>
     `;
-    el.addEventListener("click", () => {
-      state.revealed[index] = true;
-      el.classList.add("revealed");
-      reportButton.disabled = !state.revealed.every(Boolean);
-      if (card.arcana === "大阿卡那") toast("这是一张能量较强的牌。");
-      if (card.orientation === "逆位") toast("逆位不是坏消息，是一个温柔提醒。");
+
+    const triggerFlip = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      flipRevealCard({ index, card, el, slot, wrap, reportButton, isMajor, isReversed, syncProgress });
+    };
+
+    el.addEventListener("click", triggerFlip);
+    el.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      triggerFlip(event);
     });
-    cards.append(el);
+
+    slot.append(label, el);
+    deck.append(slot);
   });
-  wrap.querySelector("[data-again]").addEventListener("click", () => go("shuffle"));
+
+  wrap.querySelector("[data-redraw]").addEventListener("click", redrawSameQuestion);
+  wrap.querySelector("[data-newq]").addEventListener("click", resetAll);
   reportButton.disabled = !state.revealed.every(Boolean);
+  if (!reportButton.disabled) reportButton.classList.add("pulse-ready");
   reportButton.addEventListener("click", () => go("report"));
+  syncProgress();
+  updateRevealGuide(wrap);
   return screen(wrap);
 }
 
 function renderReport() {
   const reading = state.reading;
+  const teaser = reportTeaser(reading);
   const wrap = document.createElement("div");
   wrap.className = "shell report";
   const cards = reading.cards.map((card) => `${card.position}：${card.name} ${card.orientation}`).join("<br>");
   const cardImages = reading.cards.map((card) => `
-    <figure class="mini-card">
+    <figure class="mini-card ${card.arcana === "大阿卡那" ? "is-major" : ""}">
       <img src="${card.image}" alt="${card.name} 卡面图">
       <figcaption>${card.position}</figcaption>
     </figure>
   `).join("");
+  const detailSections = reading.summary.sections.map((section) => summarySection(section)).join("");
   wrap.innerHTML = `
     <aside class="report-card" id="report-card">
       <p class="eyebrow">${reading.date}</p>
@@ -382,27 +654,45 @@ function renderReport() {
         <div class="meta-row"><span>牌面</span><strong>${cards}</strong></div>
         <div class="meta-row"><span>今日关键词</span><strong>${reading.summary.keyword}</strong></div>
         <div class="meta-row"><span>幸运色</span><strong>${reading.summary.luckyColor}</strong></div>
-        <div class="meta-row"><span>今日行动</span><strong>${reading.summary.action}</strong></div>
+        <div class="meta-row"><span>温柔尝试</span><strong>${reading.summary.action}</strong></div>
       </div>
-      <div class="actions">
+      <div class="actions report-loop">
         <button class="btn primary" data-save>保存结果</button>
-        <button class="btn secondary" data-home>换个问题</button>
+        <button class="btn secondary" data-redraw>同题再抽</button>
+        <button class="btn secondary" data-newq>新的问题</button>
         <button class="btn secondary" data-history>抽卡记录</button>
       </div>
     </aside>
     <section class="summary panel">
-      <p class="eyebrow">AI Reading</p>
-      <h2>AI 为你整理的解读</h2>
-      ${reading.summary.sections.map(section => summarySection(section)).join("")}
-      <div class="actions">
-        <button class="btn secondary" data-again>重新抽卡</button>
+      <div class="summary-head">
+        <div>
+          <p class="eyebrow">AI Reading</p>
+          <h2>AI 为你整理的解读</h2>
+        </div>
+        ${readingSourceBadge(reading)}
+      </div>
+      <article class="reward-reveal">
+        <p class="reward-label">✦ 牌面回应</p>
+        <h3 class="reward-keyword">${escapeHtml(teaser.keyword)}</h3>
+        <p class="reward-summary">${escapeHtml(teaser.summary)}</p>
+        ${teaser.action ? `<p class="reward-action"><span>温柔尝试</span>${escapeHtml(teaser.action)}</p>` : ""}
+        <p class="reward-star">${escapeHtml(teaser.star)}</p>
+        <button class="btn primary" data-expand type="button">${state.reportExpanded ? "收起完整解读" : "展开完整解读"}</button>
+      </article>
+      <div class="summary-detail ${state.reportExpanded ? "" : "is-collapsed"}">
+        ${detailSections}
       </div>
     </section>
   `;
   wrap.querySelector("[data-save]").addEventListener("click", saveResult);
-  wrap.querySelector("[data-home]").addEventListener("click", resetAll);
+  wrap.querySelector("[data-redraw]").addEventListener("click", redrawSameQuestion);
+  wrap.querySelector("[data-newq]").addEventListener("click", resetAll);
   wrap.querySelector("[data-history]").addEventListener("click", () => go("history"));
-  wrap.querySelector("[data-again]").addEventListener("click", () => go("shuffle"));
+  wrap.querySelector("[data-expand]").addEventListener("click", () => {
+    state.reportExpanded = !state.reportExpanded;
+    app.innerHTML = "";
+    app.append(renderReport());
+  });
   return screen(wrap);
 }
 
@@ -436,29 +726,65 @@ function option(title, desc, selected, onClick) {
   return button;
 }
 
+function readingSourceBadge(reading) {
+  if (reading?.aiPowered) {
+    return `
+      <div class="reading-source is-ai" role="status" aria-label="本解读由 AI 生成">
+        <span class="reading-source-dot" aria-hidden="true"></span>
+        <span class="reading-source-text">本解读由 AI 生成</span>
+      </div>
+    `;
+  }
+  const note = reading?.aiError ? escapeHtml(reading.aiError) : "当前为本地精简版解读";
+  return `
+    <div class="reading-source is-fallback" role="status" aria-label="精简版解读">
+      <span class="reading-source-dot" aria-hidden="true"></span>
+      <span class="reading-source-text">精简版解读</span>
+      <span class="reading-source-note">${note}</span>
+    </div>
+  `;
+}
+
 function summarySection(section) {
+  const bodyClass = section.emphasis ? "summary-section is-emphasis" : "summary-section";
   if (section.list) {
     return `
-      <article class="summary-section">
+      <article class="${bodyClass}">
         <h3>${escapeHtml(section.title)}</h3>
         <ul>${section.list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
       </article>
     `;
   }
   return `
-    <article class="summary-section">
+    <article class="${bodyClass}">
       <h3>${escapeHtml(section.title)}</h3>
-      <p>${escapeHtml(section.text)}</p>
+      <div class="summary-copy">${formatSectionText(section.text)}</div>
     </article>
   `;
 }
 
+function formatSectionText(text) {
+  return String(text || "")
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => `<p>${escapeHtml(part)}</p>`)
+    .join("");
+}
+
 function historyItem(item, index) {
-  const star = item.summary?.sections?.at(-1)?.text || "愿你慢慢看清自己真正想靠近的方向。";
+  const star = item.summary?.sections?.find((s) => s.title === "最后想留给你的一句话")?.text
+    || item.summary?.sections?.find((s) => s.title === "今日星语")?.text
+    || item.summary?.sections?.at(-1)?.text
+    || "愿你慢慢看清自己真正想靠近的方向。";
+  const thumbs = (item.cards || []).slice(0, 3).map((card) => `
+    <img class="history-thumb ${card.arcana === "大阿卡那" ? "is-major" : ""}" src="${card.image}" alt="">
+  `).join("");
   return `
     <article class="history-item">
       <div>
         <p class="eyebrow">${item.date || `记录 ${index + 1}`}</p>
+        ${thumbs ? `<div class="history-thumbs">${thumbs}</div>` : ""}
         <h3>${escapeHtml(item.question || "我的问题")}</h3>
         <p>${escapeHtml(star)}</p>
       </div>
@@ -475,10 +801,14 @@ function go(step) {
 
 function resetAll() {
   state.step = "theme";
+  state.quickPath = false;
   state.question = "";
   state.selectedSlots = [];
   state.reading = null;
   state.revealed = [];
+  state.reportExpanded = false;
+  buzz(8);
+  toast("开启新的提问 ✦");
   render();
 }
 
@@ -492,7 +822,10 @@ async function saveResult() {
   history.unshift(payload);
   localStorage.setItem(key, JSON.stringify(history.slice(0, 12)));
 
-  const text = `星月少女塔罗馆\n问题：${state.reading.question}\n关键词：${state.reading.summary.keyword}\n星语：${state.reading.summary.sections.at(-1).text}`;
+  const closing = sectionText(state.reading, "最后想留给你的一句话")
+    || state.reading.summary?.sections?.at(-1)?.text
+    || "";
+  const text = `星月少女塔罗馆\n问题：${state.reading.question}\n关键词：${state.reading.summary.keyword}\n收束：${closing}`;
   try {
     await navigator.clipboard.writeText(text);
     toast("已保存到本机记录，并复制了分享文案。");

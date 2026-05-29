@@ -1,3 +1,5 @@
+import { minorArcanaMeanings } from "./minor-arcana-meanings.js";
+
 export const majorArcana = [
   ["fool", "愚者", "The Fool", "0", "新的开始", "自由", "冒险", "轻率", "迷失方向", "先允许自己小步出发", "0"],
   ["magician", "魔术师", "The Magician", "I", "主动创造", "资源整合", "显化", "操控", "能量分散", "把想法变成一个具体动作", "I"],
@@ -77,27 +79,32 @@ export const suits = [
 ];
 
 export const minorRanks = [
-  ["ace", "王牌", "Ace", 1, "起点", "种子", "机会", "开端受阻", "能量未落地"],
-  ["two", "二", "Two", 2, "选择", "互动", "平衡", "摇摆", "难以协调"],
-  ["three", "三", "Three", 3, "协作", "扩展", "初步成果", "合作不顺", "进展延迟"],
-  ["four", "四", "Four", 4, "稳定", "休整", "安全感", "停滞", "防御过强"],
-  ["five", "五", "Five", 5, "冲突", "挑战", "调整", "逃避冲突", "消耗过度"],
-  ["six", "六", "Six", 6, "流动", "互惠", "修复", "失衡", "旧事牵绊"],
-  ["seven", "七", "Seven", 7, "评估", "选择", "坚持", "犹豫", "看不清重点"],
-  ["eight", "八", "Eight", 8, "推进", "练习", "专注", "卡住", "节奏失衡"],
-  ["nine", "九", "Nine", 9, "积累", "独立", "临近完成", "压力放大", "难以满足"],
-  ["ten", "十", "Ten", 10, "完成", "承担", "阶段结果", "负担过重", "结尾拖延"],
-  ["page", "侍从", "Page", null, "学习", "消息", "好奇", "经验不足", "迟疑"],
-  ["knight", "骑士", "Knight", null, "追寻", "行动", "推进", "冲动", "方向不稳"],
-  ["queen", "王后", "Queen", null, "成熟感受", "接纳", "滋养", "过度内耗", "界限模糊"],
-  ["king", "国王", "King", null, "掌控", "稳定输出", "负责", "控制过强", "表达僵硬"]
+  ["ace", "王牌", "Ace", 1],
+  ["two", "二", "Two", 2],
+  ["three", "三", "Three", 3],
+  ["four", "四", "Four", 4],
+  ["five", "五", "Five", 5],
+  ["six", "六", "Six", 6],
+  ["seven", "七", "Seven", 7],
+  ["eight", "八", "Eight", 8],
+  ["nine", "九", "Nine", 9],
+  ["ten", "十", "Ten", 10],
+  ["page", "侍从", "Page", null],
+  ["knight", "骑士", "Knight", null],
+  ["queen", "王后", "Queen", null],
+  ["king", "国王", "King", null]
 ];
 
-function buildMinorCard(suit, [rankKey, rankName, rankEn, count, k1, k2, k3, r1, r2], rankIndex) {
+function buildMinorCard(suit, [rankKey, rankName, rankEn, count], rankIndex) {
+  const slug = `${suit.key}-${rankKey}`;
   const name = `${suit.name}${rankName}`;
   const nameEn = `${rankEn} of ${suit.nameEn}`;
+  const meta = minorArcanaMeanings[slug];
+  if (!meta) {
+    throw new Error(`Missing minor arcana meaning for ${slug}`);
+  }
   return {
-    slug: `${suit.key}-${rankKey}`,
+    slug,
     name,
     nameEn,
     number: rankEn,
@@ -110,11 +117,11 @@ function buildMinorCard(suit, [rankKey, rankName, rankEn, count, k1, k2, k3, r1,
     suitKey: suit.key,
     element: suit.element,
     symbolCount: count,
-    upright: [`${suit.domain}${k1}`, k2, k3],
-    reversed: [`${suit.domain}${r1}`, r2, `${k1}受阻`],
-    girlToneMeaning: `${name}更贴近日常层面的${suit.domain}，它把注意力放在${suit.tone}与${k1}上。`,
-    actionHint: `把${suit.domain}落到今天能完成的一件小事里`,
-    image: `/assets/cards/${suit.key}-${rankKey}.svg`
+    upright: [...meta.upright],
+    reversed: [...meta.reversed],
+    girlToneMeaning: `${name}：${meta.essence}`,
+    actionHint: meta.actionHint,
+    image: `/assets/cards/${slug}.svg`
   };
 }
 
@@ -129,10 +136,26 @@ export function getTarotStats() {
     count: tarotDeck.length,
     major: majorArcana.length,
     minor: minorArcana.length,
+    minorMeaningsComplete: Object.keys(minorArcanaMeanings).length,
     suits: suits.map((suit) => ({
       name: suit.name,
       nameEn: suit.nameEn,
       count: minorArcana.filter((card) => card.suitKey === suit.key).length
     }))
+  };
+}
+
+/** 校验小阿卡那牌意库与牌组是否一致 */
+export function validateMinorMeanings() {
+  const expected = suits.flatMap((suit) => minorRanks.map(([rankKey]) => `${suit.key}-${rankKey}`));
+  const defined = Object.keys(minorArcanaMeanings);
+  const missing = expected.filter((slug) => !minorArcanaMeanings[slug]);
+  const extra = defined.filter((slug) => !expected.includes(slug));
+  return {
+    ok: missing.length === 0 && extra.length === 0,
+    expected: expected.length,
+    defined: defined.length,
+    missing,
+    extra
   };
 }

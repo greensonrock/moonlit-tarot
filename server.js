@@ -3,9 +3,30 @@ import { readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildCompactFallback, generateAiSummary, mergeAiSummary } from "./ai-reading.js";
 import { getTarotStats, tarotDeck } from "./tarot-data.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+async function loadEnvFile() {
+  try {
+    const raw = await readFile(path.join(__dirname, ".env"), "utf8");
+    for (const line of raw.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eq = trimmed.indexOf("=");
+      if (eq === -1) continue;
+      const key = trimmed.slice(0, eq).trim();
+      const value = trimmed.slice(eq + 1).trim();
+      // DMXAPI 配置始终以 .env 为准，避免 shell 环境变量覆盖
+      if (key.startsWith("DMXAPI_") || !process.env[key]) {
+        process.env[key] = value;
+      }
+    }
+  } catch {
+    // .env optional when vars are set in the shell
+  }
+}
 const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || "0.0.0.0";
@@ -43,7 +64,7 @@ function shuffle(items) {
   return copy;
 }
 
-function drawReading({ theme, mood, question, spread }) {
+async function drawReading({ theme, mood, question, spread }) {
   const positions = spreadPositions[spread] || spreadPositions.three;
   const questionProfile = analyzeQuestion(question, theme);
   const cards = shuffle(deck).slice(0, positions.length).map((card, index) => {
@@ -64,7 +85,7 @@ function drawReading({ theme, mood, question, spread }) {
     };
   });
 
-  return {
+  const reading = {
     date: new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(new Date()),
     themeLabel: themeLabels[theme] || "心动与关系",
     mood,
@@ -72,8 +93,28 @@ function drawReading({ theme, mood, question, spread }) {
     spread,
     cards,
     questionProfile,
-    summary: buildSummary({ theme, mood, question, cards, questionProfile })
+    summary: buildSummary({ theme, mood, question, cards, questionProfile }),
+    aiPowered: false
   };
+
+  if (process.env.DMXAPI_KEY) {
+    try {
+      const ai = await generateAiSummary(reading);
+      if (ai) {
+        reading.summary = mergeAiSummary(reading, ai);
+        reading.aiPowered = true;
+      }
+    } catch (error) {
+      console.error("AI reading failed:", error.message);
+      reading.aiPowered = false;
+      reading.aiError = "AI 暂时不可用，已显示精简版解读";
+      reading.summary = mergeAiSummary(reading, buildCompactFallback(reading));
+    }
+  } else {
+    reading.summary = mergeAiSummary(reading, buildCompactFallback(reading));
+  }
+
+  return reading;
 }
 
 function analyzeQuestion(question = "", theme = "relationship") {
@@ -320,7 +361,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (req.method === "POST" && url.pathname === "/api/reading") {
-      sendJson(res, drawReading(await readBody(req)));
+      sendJson(res, await drawReading(await readBody(req)));
       return;
     }
 
@@ -342,8 +383,15 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+await loadEnvFile();
 server.listen(port, host, () => {
   console.log(`Moonlit Tarot is running at http://127.0.0.1:${port}`);
+  if (process.env.DMXAPI_KEY) {
+    console.log(`AI reading: DMXAPI enabled @ ${process.env.DMXAPI_BASE || "https://www.dmxapi.com"}`);
+    console.log(`AI model: ${process.env.DMXAPI_MODEL || "deepseek-v4-flash"}`);
+  } else {
+    console.log("AI reading: template only (set DMXAPI_KEY in .env)");
+  }
   for (const iface of Object.values(os.networkInterfaces())) {
     for (const addr of iface ?? []) {
       if (addr.family === "IPv4" && !addr.internal) {

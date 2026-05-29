@@ -2,3 +2,4 @@
 .bin/
 cloudflared.tgz
 node_modules/
+.env
