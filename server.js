@@ -349,7 +349,12 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (req.method === "GET" && url.pathname === "/api/health") {
-      sendJson(res, { status: "ok" });
+      sendJson(res, {
+        status: "ok",
+        service: "moonlit-tarot",
+        aiEnabled: Boolean(process.env.DMXAPI_KEY),
+        model: process.env.DMXAPI_MODEL || null
+      });
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/cards") {

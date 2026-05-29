@@ -3,9 +3,17 @@ services:
     name: moonlit-tarot
     runtime: node
     plan: free
+    region: oregon
     buildCommand: echo "No build step"
     startCommand: node server.js
     healthCheckPath: /api/health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DMXAPI_MODEL
+        value: deepseek-v4-flash
+      - key: DMXAPI_BASE
+        value: https://www.dmxapi.com
+      - key: DMXAPI_KEY
+        sync: false
