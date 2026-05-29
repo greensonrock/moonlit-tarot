@@ -1818,10 +1818,6 @@ textarea:focus {
   line-height: 1.65;
 }
 
-  display: grid;
-  gap: 12px;
-}
-
 .visual-teaser__keyword {
   position: relative;
   display: grid;

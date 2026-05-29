@@ -117,6 +117,14 @@ function sectionListFirst(reading, title) {
   return section?.text || "";
 }
 
+function isSimilarSummaryCopy(a, b) {
+  const left = String(a || "").replace(/\s/g, "");
+  const right = String(b || "").replace(/\s/g, "");
+  if (!left || !right) return false;
+  if (left.includes(right) || right.includes(left)) return true;
+  return left.slice(0, 18) === right.slice(0, 18);
+}
+
 function reportTeaser(reading) {
   const compact = reading.summary?.aiCompact;
   const brief =
@@ -925,7 +933,10 @@ function renderVisualSummary(reading) {
           title: organized.presentState.title,
           text: organized.presentState.text
         }) : ""}
-        ${organized.briefSummary && organized.presentState && organized.presentState.text !== organized.briefSummary.text ? renderVisualModule({
+        ${organized.briefSummary && organized.presentState
+          && organized.presentState.text !== organized.briefSummary.text
+          && !isSimilarSummaryCopy(organized.presentState.text, organized.briefSummary.text)
+          ? renderVisualModule({
           kind: "state",
           title: "补充感受",
           text: organized.presentState.text

@@ -455,7 +455,7 @@ function clampText(value, max) {
   return String(value || "").trim().slice(0, max);
 }
 
-/** 在句号处截断，避免逐张解读半截句 */
+/** 在句号/逗号处截断，避免关键词与浓缩句半截 */
 function clampAtSentence(text, max) {
   const raw = String(text || "").trim();
   if (raw.length <= max) return raw;
@@ -464,10 +464,55 @@ function clampAtSentence(text, max) {
     slice.lastIndexOf("。"),
     slice.lastIndexOf("！"),
     slice.lastIndexOf("？"),
-    slice.lastIndexOf("；")
+    slice.lastIndexOf("；"),
+    slice.lastIndexOf("，"),
+    slice.lastIndexOf(",")
   );
-  if (lastPunc >= Math.floor(max * 0.5)) return slice.slice(0, lastPunc + 1);
+  if (lastPunc >= Math.floor(max * 0.45)) {
+    const cut = slice.slice(0, lastPunc + 1);
+    if (cut.endsWith("，") || cut.endsWith(",")) {
+      return `${cut.slice(0, -1)}…`;
+    }
+    return cut;
+  }
+  const openQuotes = (slice.match(/[「『]/g) || []).length;
+  const closeQuotes = (slice.match(/[」』]/g) || []).length;
+  if (openQuotes > closeQuotes) {
+    const lastOpen = Math.max(slice.lastIndexOf("「"), slice.lastIndexOf("『"));
+    if (lastOpen > 0) return `${slice.slice(0, lastOpen)}…`;
+  }
   return `${slice.trim()}…`;
+}
+
+function normalizeHeadline(text, reading, fallback) {
+  let headline = String(text || "").trim().replace(/[。.!！?？…]+$/g, "");
+  const openQuotes = (headline.match(/[「『]/g) || []).length;
+  const closeQuotes = (headline.match(/[」』]/g) || []).length;
+  const broken =
+    !headline
+    || headline.length > 12
+    || openQuotes !== closeQuotes
+    || isColdHeadline(headline);
+  if (broken) {
+    return groundHeadline(reading) || fallback.headline;
+  }
+  return headline;
+}
+
+function dedupePresentState(presentState, briefSummary) {
+  if (!presentState) return "";
+  if (!briefSummary || !isSimilarCopy(presentState, briefSummary)) return presentState;
+  const parts = String(presentState)
+    .split(/[。！？]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const briefParts = String(briefSummary)
+    .split(/[。！？]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const unique = parts.filter((part) => !briefParts.some((base) => isSimilarCopy(part, base)));
+  if (!unique.length) return "";
+  return unique.map((part) => (part.endsWith("。") ? part : `${part}。`)).join("");
 }
 
 function cardLabel(card) {
@@ -541,7 +586,7 @@ function buildPromptPayload(reading, { strictJson = false } = {}) {
 三、各字段写法
 ══════════════════
 headline（8-12字）
-  像牌师给你的今晚主题，温柔命名，可有希望感。
+  像牌师给你的今晚主题，温柔命名；短句即可，禁止引号与半截长句。
 
 briefSummary（45-60字，全篇浓缩 · 必写）
   口语化两句话以内：接住心情 + 直接回应用户问题 + 一句结论。
@@ -894,7 +939,7 @@ function dedupeListAgainstCorpus(list, corpus, maxLen = 48) {
 
 function buildBriefSummary(reading, ai) {
   if (ai?.briefSummary) {
-    return clampAtSentence(colloquializeCopy(ai.briefSummary), 65);
+    return clampAtSentence(colloquializeCopy(ai.briefSummary), 80);
   }
   const sig = questionSignals(reading);
   const embrace = (moodEmbraceLines[reading.mood] || "我懂你在意。").replace(/。$/, "");
@@ -959,6 +1004,7 @@ function normalizeAiResult(parsed, reading) {
   if (isWeakLine(presentState) || !holdsEmotion(presentState, reading) || !addressesUserQuestion(presentState, reading)) {
     presentState = compactPresentState(reading, groundPresentState(reading), briefSummary);
   }
+  presentState = dedupePresentState(presentState, briefSummary);
 
   let innerTheme = clampAtSentence(colloquializeCopy(parsed.innerTheme), 42) || fallback.innerTheme;
   if (isWeakLine(innerTheme) || isMechanicalTheme(innerTheme) || isSimilarCopy(innerTheme, briefSummary)) {
@@ -1004,10 +1050,7 @@ function normalizeAiResult(parsed, reading) {
     closingLine = groundClosingLine(reading);
   }
 
-  let headline = clampAtSentence(sanitizeCopy(parsed.headline), 14) || groundHeadline(reading) || fallback.headline;
-  if (isColdHeadline(headline)) {
-    headline = groundHeadline(reading) || fallback.headline;
-  }
+  const headline = normalizeHeadline(sanitizeCopy(parsed.headline), reading, fallback);
 
   return {
     headline,
@@ -1106,10 +1149,11 @@ export function mergeAiSummary(reading, ai) {
   if (ai.briefSummary) {
     sections.push({ title: "浓缩总结", text: ai.briefSummary, emphasis: true });
   }
-  sections.push(
-    { title: "此刻的状态", text: ai.presentState || ai.directAnswer },
-    { title: "你内心正在关注的主题", text: ai.innerTheme || ai.insight }
-  );
+  const presentState = ai.presentState || ai.directAnswer;
+  if (presentState && (!ai.briefSummary || !isSimilarCopy(presentState, ai.briefSummary))) {
+    sections.push({ title: "此刻的状态", text: presentState });
+  }
+  sections.push({ title: "你内心正在关注的主题", text: ai.innerTheme || ai.insight });
   if (ai.reminders?.length) {
     sections.push({ title: "这次抽卡给你的提醒", list: ai.reminders });
   }
