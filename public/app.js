@@ -119,14 +119,21 @@ function sectionListFirst(reading, title) {
 
 function reportTeaser(reading) {
   const compact = reading.summary?.aiCompact;
+  const brief =
+    sectionText(reading, "浓缩总结")
+    || compact?.briefSummary
+    || "";
+  const summary =
+    brief
+    || sectionText(reading, "此刻的状态")
+    || compact?.presentState
+    || sectionText(reading, "总结")
+    || compact?.directAnswer
+    || "";
   return {
     keyword: reading.summary?.keyword || "星月指引",
-    summary:
-      sectionText(reading, "此刻的状态")
-      || compact?.presentState
-      || sectionText(reading, "总结")
-      || compact?.directAnswer
-      || "",
+    brief,
+    summary,
     star:
       sectionText(reading, "最后想留给你的一句话")
       || compact?.closingLine
@@ -641,7 +648,6 @@ function renderReport() {
       <figcaption>${card.position}</figcaption>
     </figure>
   `).join("");
-  const detailSections = reading.summary.sections.map((section) => summarySection(section)).join("");
   wrap.innerHTML = `
     <aside class="report-card" id="report-card">
       <p class="eyebrow">${reading.date}</p>
@@ -673,14 +679,11 @@ function renderReport() {
       </div>
       <article class="reward-reveal">
         <p class="reward-label">✦ 牌面回应</p>
-        <h3 class="reward-keyword">${escapeHtml(teaser.keyword)}</h3>
-        <p class="reward-summary">${escapeHtml(teaser.summary)}</p>
-        ${teaser.action ? `<p class="reward-action"><span>温柔尝试</span>${escapeHtml(teaser.action)}</p>` : ""}
-        <p class="reward-star">${escapeHtml(teaser.star)}</p>
-        <button class="btn primary" data-expand type="button">${state.reportExpanded ? "收起完整解读" : "展开完整解读"}</button>
+        ${renderVisualTeaser(reading, teaser)}
+        <button class="btn primary" data-expand type="button">${state.reportExpanded ? "收起完整解读" : "展开图像化解读"}</button>
       </article>
       <div class="summary-detail ${state.reportExpanded ? "" : "is-collapsed"}">
-        ${detailSections}
+        ${renderVisualSummary(reading)}
       </div>
     </section>
   `;
@@ -741,6 +744,252 @@ function readingSourceBadge(reading) {
       <span class="reading-source-dot" aria-hidden="true"></span>
       <span class="reading-source-text">精简版解读</span>
       <span class="reading-source-note">${note}</span>
+    </div>
+  `;
+}
+
+function moodLabel(moodId) {
+  return moods.find(([id]) => id === moodId)?.[1] || "";
+}
+
+function organizeSummarySections(reading) {
+  const sections = reading.summary?.sections || [];
+  const organized = {
+    briefSummary: null,
+    presentState: null,
+    innerTheme: null,
+    reminders: null,
+    positionReadings: [],
+    innerTension: null,
+    reflectionQuestions: null,
+    gentleActions: null,
+    closingLine: null,
+    other: []
+  };
+
+  for (const section of sections) {
+    const title = section.title || "";
+    if (title === "浓缩总结") organized.briefSummary = section;
+    else if (title === "此刻的状态") organized.presentState = section;
+    else if (title === "你内心正在关注的主题") organized.innerTheme = section;
+    else if (title === "这次抽卡给你的提醒") organized.reminders = section;
+    else if (title.includes("｜")) organized.positionReadings.push(section);
+    else if (title === "内心的拉扯点") organized.innerTension = section;
+    else if (title === "可以陪你想一想的问题") organized.reflectionQuestions = section;
+    else if (title === "接下来你可以温柔地尝试") organized.gentleActions = section;
+    else if (title === "最后想留给你的一句话") organized.closingLine = section;
+    else organized.other.push(section);
+  }
+
+  return organized;
+}
+
+function cardForSectionTitle(reading, title) {
+  const [position, name] = String(title || "").split("｜").map((part) => part.trim());
+  return reading.cards?.find((card) => card.name === name || card.position === position);
+}
+
+function renderVisualJourney(reading, { compact = false } = {}) {
+  const cards = reading.cards || [];
+  if (!cards.length) return "";
+
+  const nodes = cards.map((card, index) => `
+    <div class="visual-journey__node ${compact ? "is-compact" : ""}">
+      <div class="visual-journey__thumb ${card.arcana === "大阿卡那" ? "is-major" : ""} ${card.orientation === "逆位" ? "is-reversed" : ""}">
+        <img src="${card.image}" alt="${escapeHtml(card.name)}">
+        <span class="visual-journey__orient">${card.orientation === "逆位" ? "逆" : "正"}</span>
+      </div>
+      <span class="visual-journey__pos">${escapeHtml(card.position)}</span>
+      ${compact ? "" : `<span class="visual-journey__name">${escapeHtml(card.name)}</span>`}
+      ${index < cards.length - 1 ? `<span class="visual-journey__line" aria-hidden="true"></span>` : ""}
+    </div>
+  `).join("");
+
+  return `
+    <div class="visual-journey ${compact ? "is-compact" : ""}" role="img" aria-label="牌阵旅程：${cards.map((c) => c.position).join("、")}">
+      ${nodes}
+    </div>
+  `;
+}
+
+function renderVisualChip(label, value) {
+  if (!value) return "";
+  return `
+    <span class="visual-chip">
+      <span class="visual-chip__label">${escapeHtml(label)}</span>
+      <span class="visual-chip__value">${escapeHtml(value)}</span>
+    </span>
+  `;
+}
+
+function renderVisualModule({ kind, title, text, list, emphasis = false }) {
+  const icons = {
+    state: "☽",
+    theme: "≋",
+    reminders: "✦",
+    tension: "⇄",
+    questions: "?",
+    actions: "↳",
+    closing: "✧"
+  };
+  const body = list?.length
+    ? `<ol class="visual-module__list">${list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ol>`
+    : `<div class="visual-module__text">${formatSectionText(text)}</div>`;
+
+  return `
+    <article class="visual-module visual-module--${kind} ${emphasis ? "is-emphasis" : ""}">
+      <div class="visual-module__head">
+        <span class="visual-module__icon" aria-hidden="true">${icons[kind] || "✦"}</span>
+        <h3>${escapeHtml(title)}</h3>
+      </div>
+      ${body}
+    </article>
+  `;
+}
+
+function renderVisualPositionCards(reading, sections) {
+  if (!sections.length) return "";
+
+  const cards = sections.map((section) => {
+    const card = cardForSectionTitle(reading, section.title);
+    const [position, name] = section.title.split("｜").map((part) => part.trim());
+    const media = card
+      ? `
+        <div class="visual-position__media ${card.arcana === "大阿卡那" ? "is-major" : ""} ${card.orientation === "逆位" ? "is-reversed" : ""}">
+          <img src="${card.image}" alt="${escapeHtml(card.name)}">
+          <span class="visual-position__orient">${card.orientation === "逆位" ? "逆位" : "正位"}</span>
+        </div>
+      `
+      : `<div class="visual-position__media is-placeholder"><span>✦</span></div>`;
+
+    return `
+      <article class="visual-position">
+        ${media}
+        <div class="visual-position__body">
+          <p class="visual-position__meta">
+            <span class="visual-position__pos">${escapeHtml(position)}</span>
+            <span class="visual-position__name">${escapeHtml(name || card?.name || "")}</span>
+          </p>
+          <div class="visual-position__text">${formatSectionText(section.text)}</div>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  return `
+    <section class="visual-positions" aria-label="逐张牌解读">
+      <h3 class="visual-positions__title">牌面解读图谱</h3>
+      <div class="visual-positions__grid">${cards}</div>
+    </section>
+  `;
+}
+
+function renderVisualSummary(reading) {
+  const organized = organizeSummarySections(reading);
+  const hasAiStructure = Boolean(
+    organized.briefSummary
+    || organized.presentState
+    || organized.innerTheme
+    || organized.positionReadings.length
+    || organized.closingLine
+  );
+
+  if (!hasAiStructure) {
+    return (reading.summary?.sections || []).map((section) => summarySection(section)).join("");
+  }
+
+  const remindersList = organized.reminders?.list
+    || (organized.reminders?.text ? [organized.reminders.text] : null);
+  const questionsList = organized.reflectionQuestions?.list
+    || (organized.reflectionQuestions?.text ? [organized.reflectionQuestions.text] : null);
+  const actionsList = organized.gentleActions?.list
+    || (organized.gentleActions?.text ? [organized.gentleActions.text] : null);
+
+  return `
+    <div class="visual-summary">
+      ${renderVisualJourney(reading)}
+      <div class="visual-summary__chips">
+        ${renderVisualChip("心情", moodLabel(reading.mood))}
+        ${renderVisualChip("主题", reading.themeLabel)}
+        ${renderVisualChip("关键词", reading.summary?.keyword)}
+      </div>
+      <div class="visual-summary__grid">
+        ${organized.briefSummary ? renderVisualModule({
+          kind: "closing",
+          title: "浓缩总结",
+          text: organized.briefSummary.text,
+          emphasis: true
+        }) : ""}
+        ${!organized.briefSummary && organized.presentState ? renderVisualModule({
+          kind: "state",
+          title: organized.presentState.title,
+          text: organized.presentState.text
+        }) : ""}
+        ${organized.briefSummary && organized.presentState && organized.presentState.text !== organized.briefSummary.text ? renderVisualModule({
+          kind: "state",
+          title: "补充感受",
+          text: organized.presentState.text
+        }) : ""}
+        ${organized.innerTheme ? renderVisualModule({
+          kind: "theme",
+          title: organized.innerTheme.title,
+          text: organized.innerTheme.text
+        }) : ""}
+        ${remindersList?.length ? renderVisualModule({
+          kind: "reminders",
+          title: organized.reminders?.title || "这次抽卡给你的提醒",
+          list: remindersList
+        }) : ""}
+      </div>
+      ${renderVisualPositionCards(reading, organized.positionReadings)}
+      <div class="visual-summary__grid">
+        ${organized.innerTension ? renderVisualModule({
+          kind: "tension",
+          title: organized.innerTension.title,
+          text: organized.innerTension.text
+        }) : ""}
+        ${questionsList?.length ? renderVisualModule({
+          kind: "questions",
+          title: organized.reflectionQuestions?.title || "可以陪你想一想的问题",
+          list: questionsList
+        }) : ""}
+        ${actionsList?.length ? renderVisualModule({
+          kind: "actions",
+          title: organized.gentleActions?.title || "接下来你可以温柔地尝试",
+          list: actionsList
+        }) : ""}
+        ${organized.closingLine ? renderVisualModule({
+          kind: "closing",
+          title: organized.closingLine.title,
+          text: organized.closingLine.text,
+          emphasis: true
+        }) : ""}
+      </div>
+      ${organized.other.map((section) => summarySection(section)).join("")}
+    </div>
+  `;
+}
+
+function renderVisualTeaser(reading, teaser) {
+  return `
+    <div class="visual-teaser">
+      <div class="visual-teaser__keyword">
+        <span class="visual-teaser__glow" aria-hidden="true"></span>
+        <strong>${escapeHtml(teaser.keyword)}</strong>
+      </div>
+      ${teaser.brief ? `<p class="visual-brief">${escapeHtml(teaser.brief)}</p>` : ""}
+      ${renderVisualJourney(reading, { compact: true })}
+      ${!teaser.brief && teaser.summary ? `<p class="reward-summary">${escapeHtml(teaser.summary)}</p>` : ""}
+      ${teaser.action ? `
+        <div class="visual-action-pill">
+          <span class="visual-action-pill__icon" aria-hidden="true">↳</span>
+          <span>${escapeHtml(teaser.action)}</span>
+        </div>
+      ` : ""}
+      <blockquote class="visual-closing-quote">
+        <span class="visual-closing-quote__mark" aria-hidden="true">✧</span>
+        ${escapeHtml(teaser.star)}
+      </blockquote>
     </div>
   `;
 }

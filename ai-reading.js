@@ -343,81 +343,67 @@ function questionFocusHint(reading) {
     lines.push(`【牌位顺序】${positions}。reminders 共 ${Math.min(reading.cards.length, 3)} 条，严格按此顺序，每条对应一张牌，句式不可雷同。`);
   }
 
-  lines.push(`【模块绑牌 · 必守】
-- presentState：句1 接住【此刻心情】；句2 回应用户字面问题；句3 【现状】牌名+正/逆位佐证（共 90-120 字）。
-- innerTheme：一句故事线 + 一句温和希望（不是结果承诺）；禁止关键词拼接。
-- innerTension：命名两难并正常化（「这样想很正常」），交叉【现状】与【阻碍】；逆位写成「还没找到出口的能量」。
-- gentleActions：1-2 条本周小步，至少 1 条是自我关怀（休息/写下/找人聊），至少 1 条扣【建议】牌。
-- closingLine：看见用户（半句）+ 牌阵收束（半句）+ 陪伴感（半句）；回扣用户问题的一个词。`);
+  lines.push(`【模块绑牌 · 必守 · 去重复】
+各模块分工不同，禁止把同一段话换个标题重复粘贴：
+- briefSummary：全篇唯一浓缩（口语，45-60字），先接住再问句，直接给结论。
+- presentState：只写「感受+一句结论」（≤55字），不写牌名、不展开牌意（细节留给 positionReadings）。
+- innerTheme：一句故事线（≤40字），不重复 briefSummary。
+- reminders：可写 2-3 条便签（每条≤18字），只点关键词；若与逐张解读重复则省略该条。
+- positionReadings：唯一允许详细解牌的地方（每张 50-68 字）。
+- innerTension：只写心理拉扯（≤48字），不复述牌面。
+- closingLine：短收束（≤32字），禁止重复 gentleActions 或 briefSummary。
+- 口语化：像深夜语音跟朋友说，少用「暗示/迹象/投入度/疏离」等报告腔。`);
   lines.push(spreadSynthesisHint(reading));
   return lines.join("\n");
 }
 
 function buildPositionReading(card, reading) {
   const bridge = interpretCardLine(card, reading);
-  return clampAtSentence(`${card.position}·${cardLabel(card)}：${bridge}`, 85);
+  return clampAtSentence(`${card.position}·${cardLabel(card)}：${bridge}`, 68);
 }
 
 function groundPresentState(reading) {
-  const now = cardByPosition(reading.cards, "现状", "今日指引", "我") || reading.cards?.[0];
-  if (!now) return moodEmbraceLine(reading.mood);
   const sig = questionSignals(reading);
-  const embrace = moodEmbraceLine(reading.mood);
-  let answer = "";
-  if (sig.asksOffer && sig.asksWhenWhere) {
-    answer = "就 offer 何时何地，牌看更像还在辨认方向，尚未到最后定局。";
-  } else if (sig.asksOffer) {
-    answer = "就 offer 走向，牌看当前仍在评估与等待之间。";
-  } else if (sig.choice) {
-    answer = `就「${sig.choice.a}」与「${sig.choice.b}」，牌面暂未给出单边答案。`;
-  } else {
-    answer = `就「${trimQuestion(reading.question)}」，牌在陪你慢慢看清。`;
+  const embrace = (moodEmbraceLines[reading.mood] || "我懂你在意。").replace(/。$/, "");
+  if (sig.asksOtherFeeling) {
+    return `${embrace}。就ta的心意，牌看暂时偏淡，先别自己吓自己。`;
   }
-  const core = clampAtSentence(interpretCardLine(now, reading), 50);
-  return clampAtSentence(
-    `${embrace}${answer}【现状】${cardLabel(now)}：${core}`,
-    120
-  );
+  if (sig.asksOffer && sig.asksWhenWhere) {
+    return `${embrace}。offer何时何地，牌看还在路上，别急着自己吓自己。`;
+  }
+  if (sig.asksOffer) {
+    return `${embrace}。工作上还在观望期，先把事实和担心分开。`;
+  }
+  if (sig.choice) {
+    return `${embrace}。两边都还在看，今天不必硬选。`;
+  }
+  return `${embrace}。牌在陪你慢慢看清，不必今天就想通。`;
 }
 
 function groundInnerTheme(reading) {
   const cards = reading.cards || [];
-  if (cards.length < 2) return "牌面在陪你辨认当下真正重要的那一件事，光还没有熄灭。";
-  const [a, b, c] = cards;
-  const block = b?.position === "阻碍" ? b : b;
-  const advice = c || cards.at(-1);
-  return clampAtSentence(
-    `从${a.name}到${block.name}确有拉扯，但${advice.name}仍在指向一条更忠于内心的路`,
-    60
-  );
+  if (cards.length < 2) return "牌在陪你辨认当下最重要的一件事。";
+  const advice = cards.at(-1);
+  return clampAtSentence(`前面有点卡，但${advice?.name || "建议牌"}仍在给你出口。`, 42);
 }
 
 function groundInnerTension(reading) {
-  const now = cardByPosition(reading.cards, "现状", "今日指引", "我");
-  const block = cardByPosition(reading.cards, "阻碍", "隐藏因素");
-  if (!now || !block) {
-    return "一方面你想尽快看清答案，另一方面你又怕选错——这样想很正常，不必责怪自己。";
+  const sig = questionSignals(reading);
+  if (sig.asksOtherFeeling) {
+    return "你想靠近确认，又怕主动会打破平衡——这很正常。";
   }
-  const normalize = "这样想并不说明你软弱，只是你在认真对待自己的人生。";
-  return clampAtSentence(
-    `一方面${now.name}${now.orientation === "逆位" ? "逆位" : "正位"}让你${now.orientation === "逆位" ? "难以前行" : "看见当下"}；另一方面${block.name}${block.orientation === "逆位" ? "逆位" : "正位"}把${(block.keywords || [])[0] || "现实"}拉进拉扯。${normalize}`,
-    100
-  );
+  if (sig.asksOffer) {
+    return "你想快点有结果，又怕选错——这份慎重挺珍贵。";
+  }
+  return "你想看清答案，又怕一旦投入就难以回头——这很正常。";
 }
 
 function groundClosingLine(reading) {
-  const advice = cardByPosition(reading.cards, "建议", "下一步") || reading.cards?.at(-1);
   const sig = questionSignals(reading);
-  if (!advice) {
-    return "谢谢你今晚的认真。愿你温柔且清醒地前行，我会陪你慢慢看清。";
+  if (sig.choice) {
+    return "先安顿好自己，城市和时间都会慢慢清楚。";
   }
-  const companion = sig.choice
-    ? "你不必独自硬扛，城市与时间会在节奏对齐后更清晰。"
-    : "你不必一次想通全部，此刻照顾好自己也很好。";
-  return clampAtSentence(
-    `谢谢你今晚的认真。${advice.name}邀请你先安顿感受，${companion}`,
-    58
-  );
+  return "今晚先到这儿，照顾好自己就很好。";
 }
 
 function groundHeadline(reading) {
@@ -541,6 +527,8 @@ function buildPromptPayload(reading, { strictJson = false } = {}) {
 2. 【关系语气】温柔、稳定、不评判；像并肩坐着的牌师，不是考官或预言机。全文「你」直接对话；「我」可偶尔出场（全篇 ≤2 次，如「我懂」「我想陪你看到」）。
 3. 【牌面驱动】每模块引用具体牌名；正/逆位必须与输入一致。逆位说成「还没找到出口的能量」，不说「坏消息」。
 4. 【合参牌阵】按 现状→阻碍→建议 因果链写；依据「牌意精华」转化，禁止照搬输入套话。
+5. 【去重复】同一信息只出现一次：详细牌意只在 positionReadings；briefSummary 是全篇浓缩；其他模块不得复述。
+6. 【口语化】像跟朋友语音聊天：短句、好读、少术语。✗「投入度偏低、疏离迹象」 ✓「好像还不太上心、有点淡」。
 
 ══════════════════
 二、专业边界（增信，不吓人）
@@ -554,38 +542,35 @@ function buildPromptPayload(reading, { strictJson = false } = {}) {
 ══════════════════
 headline（8-12字）
   像牌师给你的今晚主题，温柔命名，可有希望感。
-  ✗「犹豫不走中害怕改变」 ✓「在离开前，先听见自己的心」
 
-presentState（3句，共 90-120 字）
-  句1：接住【此刻心情】（急/乱/迷茫/想放下…），让用户感到被看见
-  句2：回应用户字面问题（时间/地点/对方/去留…）
-  句3：【现状】牌名+正/逆位+关键词佐证
-  ✓「我懂你想快点看清 offer 走向，这种等待并不轻松。就何时何地，牌看尚在观望期。圣杯八逆位提示你想走却还没迈步。」
+briefSummary（45-60字，全篇浓缩 · 必写）
+  口语化两句话以内：接住心情 + 直接回应用户问题 + 一句结论。
+  ✓「我懂你想听准信。牌看ta现在偏淡、还没太热，你别急着否定自己。」
 
-innerTheme（1句，40-60 字）
-  三牌故事线 + 温和希望（非结果承诺）。
-  ✓「想离开旧局却难迈步，现实在拖你，但建议牌仍指向更忠于内心的路。」
+presentState（≤55字）
+  只写感受与结论，不写牌名、不展开牌意（牌意只在 positionReadings）。
+  ✓「我懂你想听准信。就ta的心意，牌看暂时偏淡，先别自己吓自己。」
 
-reminders（2-3 条，每条 35-48 字）
-  按牌位顺序；每条含牌名+正/逆位+对用户的具体提醒；句式不雷同；语气像温柔提醒，不是训诫。
+innerTheme（≤40字）
+  三牌故事线一句，不重复 briefSummary。
 
-innerTension（1-2句，75-100 字）
-  命名内心两难并正常化（「这样想很正常」）；交叉【现状】与【阻碍】；二选一可比较两选项。
+reminders（0-3 条，每条≤18字，便签体）
+  可选；只写关键词提醒。与逐张解读重复则不写。
 
-reflectionQuestions（恰好 2 个，各 ≤38 字）
-  开放、慈悲、扣题；帮用户自我探索，不是审问。
-  ✓「如果不必今天做决定，你希望自己被怎样对待？」
+innerTension（≤48字）
+  只写内心两难，正常化一句；不复述牌面。
 
-gentleActions（恰好 2 条，各 ≤42 字）
-  至少 1 条自我关怀（休息/写下/找人聊/对自己好一点）
-  至少 1 条从【建议】牌推导的可执行小步
+reflectionQuestions（恰好 2 个，各≤32字）
+  口语、好答，像朋友追问。
 
-closingLine（1句，45-58 字）
-  结构：看见用户 + 牌阵收束 + 陪伴感；回扣用户问题的一个词。
-  ✓「谢谢你今晚的认真。牌看节奏仍在对齐，你不必独自硬扛，我会陪你慢慢看清。」
+gentleActions（恰好 2 条，各≤36字）
+  1 条自我关怀 + 1 条可执行小步；口语。
 
-positionReadings（每张 60-85 字，完整成句）
-  牌位+牌名+正/逆位 → 牌意 → 扣回用户问题；三张牌开头句式不可相同。
+closingLine（≤32字）
+  短收束，不重复行动建议、不说「谢谢你今晚的认真」。
+
+positionReadings（每张 50-68 字）
+  唯一详细解牌处：牌位+牌名+正/逆位 → 扣题白话。
 
 ══════════════════
 四、问题类型速查
@@ -599,14 +584,15 @@ positionReadings（每张 60-85 字，完整成句）
 【输出】仅一个合法 JSON 对象，不要 Markdown，不要解释：${jsonNote}
 {
   "headline": "8-12字温柔主题",
-  "presentState": "3句：接住心情+答问+现状牌",
-  "innerTheme": "故事线+温和希望",
-  "reminders": ["按牌位顺序2-3条"],
-  "innerTension": "两难+正常化，可含二选一",
-  "reflectionQuestions": ["恰好2个，慈悲开放"],
-  "gentleActions": ["恰好2条，含1条自我关怀"],
-  "closingLine": "看见+收束+陪伴",
-  "positionReadings": [{"position":"牌位","cardName":"牌名","text":"60-85字完整句"}]
+  "briefSummary": "45-60字口语浓缩",
+  "presentState": "≤55字，感受+结论，不写牌名",
+  "innerTheme": "≤40字故事线",
+  "reminders": ["0-3条便签，每条≤18字"],
+  "innerTension": "≤48字心理拉扯",
+  "reflectionQuestions": ["恰好2个口语问句"],
+  "gentleActions": ["恰好2条"],
+  "closingLine": "≤32字短收束",
+  "positionReadings": [{"position":"牌位","cardName":"牌名","text":"50-68字"}]
 }`,
     user: `${questionFocusHint(reading)}
 
@@ -736,7 +722,7 @@ function normalizePositionReadings(parsed, reading, fallback) {
     return {
       position: String(item.position || card?.position || "").slice(0, 12),
       cardName: String(item.cardName || card?.name || "").slice(0, 16),
-      text: clampAtSentence(item.text, 85) || fallback.positionReadings?.[index]?.text || card?.keywords?.[0] || ""
+      text: clampAtSentence(item.text, 68) || fallback.positionReadings?.[index]?.text || card?.keywords?.[0] || ""
     };
   });
 }
@@ -844,7 +830,7 @@ function polishPositionReadings(items, reading, fallback) {
   const cards = reading.cards || [];
   return cards.map((card, index) => {
     const item = items[index] || {};
-    let text = clampAtSentence(sanitizeCopy(item.text), 85);
+    let text = clampAtSentence(sanitizeCopy(item.text), 68);
     if (
       isWeakLine(text)
       || !mentionsCard(text, card)
@@ -861,60 +847,160 @@ function polishPositionReadings(items, reading, fallback) {
   });
 }
 
+function colloquializeCopy(text) {
+  return String(text || "")
+    .replace(/投入度偏低/g, "还不太上心")
+    .replace(/疏离或犹豫/g, "有点淡、也在犹豫")
+    .replace(/尚未成熟/g, "还没想清楚")
+    .replace(/冷淡的迹象/g, "偏冷")
+    .replace(/暗示/g, "更像是")
+    .replace(/迹象/g, "")
+    .replace(/现状([^，。；]{1,8})(正|逆)位/g, "从现状牌看，")
+    .replace(/阻碍([^，。；]{1,8})(正|逆)位/g, "阻碍位")
+    .replace(/建议([^，。；]{1,8})(正|逆)位/g, "建议牌")
+    .replace(/谢谢你今晚的认真。?/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function splitSentences(text) {
+  return String(text || "")
+    .split(/[。！？；]/)
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 4);
+}
+
+function isSimilarCopy(a, b) {
+  const left = String(a || "").replace(/\s/g, "");
+  const right = String(b || "").replace(/\s/g, "");
+  if (!left || !right) return false;
+  if (left.includes(right) || right.includes(left)) return true;
+  const short = left.length < right.length ? left : right;
+  const long = left.length < right.length ? right : left;
+  let hit = 0;
+  for (let i = 0; i <= long.length - 6; i += 1) {
+    const chunk = long.slice(i, i + 6);
+    if (short.includes(chunk)) hit += 1;
+  }
+  return hit >= 2;
+}
+
+function dedupeListAgainstCorpus(list, corpus, maxLen = 48) {
+  const pool = Array.isArray(corpus) ? corpus : [corpus];
+  return (list || [])
+    .map((item) => clampText(colloquializeCopy(item), maxLen))
+    .filter((item) => item && !pool.some((base) => isSimilarCopy(item, base)));
+}
+
+function buildBriefSummary(reading, ai) {
+  if (ai?.briefSummary) {
+    return clampAtSentence(colloquializeCopy(ai.briefSummary), 65);
+  }
+  const sig = questionSignals(reading);
+  const embrace = (moodEmbraceLines[reading.mood] || "我懂你在意。").replace(/。$/, "");
+  if (sig.asksOtherFeeling) {
+    return clampAtSentence(`${embrace}。牌看ta暂时偏淡，你别急着否定自己。`, 65);
+  }
+  if (sig.asksOffer) {
+    return clampAtSentence(`${embrace}。offer还在路上，先分清事实和担心。`, 65);
+  }
+  return clampAtSentence(`${embrace}。牌在陪你慢慢看清，不必今天就想通。`, 65);
+}
+
+function compactPresentState(reading, text, briefSummary) {
+  let out = colloquializeCopy(text || "");
+  const cards = reading.cards || [];
+  for (const card of cards) {
+    if (card.name && out.includes(card.name)) {
+      out = out.replace(new RegExp(`[^。！？]*${card.name}[^。！？]*[。！？]?`, "g"), "");
+    }
+  }
+  out = out.replace(/\s{2,}/g, " ").trim();
+  if (out.length < 12) return clampAtSentence(briefSummary, 55);
+  return clampAtSentence(out, 55);
+}
+
+function filterReminders(reminders, positionReadings, briefSummary) {
+  const corpus = [
+    briefSummary,
+    ...(positionReadings || []).map((item) => item.text)
+  ];
+  const filtered = dedupeListAgainstCorpus(reminders, corpus, 20);
+  return filtered.length ? filtered.slice(0, 3) : [];
+}
+
+function dedupeClosingLine(closingLine, briefSummary, gentleActions) {
+  let out = colloquializeCopy(closingLine);
+  if (isSimilarCopy(out, briefSummary)) {
+    out = "今晚先到这儿，照顾好自己就很好。";
+  }
+  if ((gentleActions || []).some((item) => isSimilarCopy(out, item))) {
+    out = "慢慢来，答案会在你节奏对齐时出现。";
+  }
+  return clampAtSentence(out, 34);
+}
+
 function normalizeAiResult(parsed, reading) {
   const fallback = buildGentleFallback(reading);
   let positionReadings = normalizePositionReadings(parsed, reading, fallback);
   positionReadings = polishPositionReadings(positionReadings, reading, fallback);
+  positionReadings = positionReadings.map((item) => ({
+    ...item,
+    text: clampAtSentence(colloquializeCopy(item.text), 68)
+  }));
 
-  const nowCard = cardByPosition(reading.cards, "现状", "今日指引", "我");
-  let presentState = clampAtSentence(sanitizeCopy(parsed.presentState || parsed.opening), 120) || fallback.presentState;
-  const citesNowCard = nowCard ? mentionsCard(presentState, nowCard) : true;
-  const nowOrientOk = nowCard ? !orientationMismatch(presentState, nowCard) : true;
-  if (
-    isWeakLine(presentState)
-    || !holdsEmotion(presentState, reading)
-    || !citesNowCard
-    || !nowOrientOk
-    || !addressesUserQuestion(presentState, reading)
-  ) {
-    presentState = groundPresentState(reading) || clampText(answerUserQuestion(reading).directAnswer, 120);
+  let briefSummary = buildBriefSummary(reading, parsed);
+  let presentState = compactPresentState(
+    reading,
+    sanitizeCopy(parsed.presentState || parsed.opening),
+    briefSummary
+  ) || fallback.presentState;
+
+  if (isWeakLine(presentState) || !holdsEmotion(presentState, reading) || !addressesUserQuestion(presentState, reading)) {
+    presentState = compactPresentState(reading, groundPresentState(reading), briefSummary);
   }
 
-  let innerTheme = clampAtSentence(sanitizeCopy(parsed.innerTheme), 60) || fallback.innerTheme;
-  if (isWeakLine(innerTheme) || isMechanicalTheme(innerTheme) || !hasHopeTone(innerTheme)) {
-    innerTheme = groundInnerTheme(reading);
-  } else if (!reading.cards?.some((c) => mentionsCard(innerTheme, c))) {
+  let innerTheme = clampAtSentence(colloquializeCopy(parsed.innerTheme), 42) || fallback.innerTheme;
+  if (isWeakLine(innerTheme) || isMechanicalTheme(innerTheme) || isSimilarCopy(innerTheme, briefSummary)) {
     innerTheme = groundInnerTheme(reading);
   }
 
-  const reminders = polishReminders(normalizeStringList(parsed.reminders, 3, 48), reading, fallback);
-  let innerTension = clampAtSentence(sanitizeCopy(parsed.innerTension || parsed.synthesis), 100) || fallback.innerTension;
+  let reminders = filterReminders(
+    normalizeStringList(parsed.reminders, 3, 20),
+    positionReadings,
+    briefSummary
+  );
+
+  let innerTension = clampAtSentence(colloquializeCopy(parsed.innerTension || parsed.synthesis), 50)
+    || fallback.innerTension;
   const blockCard = cardByPosition(reading.cards, "阻碍", "隐藏因素");
+  const nowCard = cardByPosition(reading.cards, "现状", "今日指引", "我");
   if (
     isWeakLine(innerTension)
+    || isSimilarCopy(innerTension, briefSummary)
     || !nowCard
     || !blockCard
-    || !mentionsCard(innerTension, nowCard)
-    || orientationMismatch(innerTension, nowCard)
-    || orientationMismatch(innerTension, blockCard)
+    || isSimilarCopy(innerTension, positionReadings.map((item) => item.text).join(""))
   ) {
     innerTension = groundInnerTension(reading);
   }
-  const reflectionQuestions =
-    normalizeStringList(parsed.reflectionQuestions, 2, 38, 2) || fallback.reflectionQuestions;
-  let gentleActions = normalizeStringList(parsed.gentleActions, 2, 42)
-    || normalizeStringList(parsed.action ? [parsed.action] : null, 2, 42)
-    || fallback.gentleActions;
-  gentleActions = ensureSelfCareAction(gentleActions, reading);
 
-  let closingLine = clampAtSentence(sanitizeCopy(parsed.closingLine || parsed.star), 58) || fallback.closingLine;
-  const adviceCard = cardByPosition(reading.cards, "建议", "下一步");
-  if (
-    isWeakLine(closingLine)
-    || !holdsEmotion(closingLine, reading)
-    || !reading.cards?.some((c) => mentionsCard(closingLine, c))
-    || (adviceCard && orientationMismatch(closingLine, adviceCard))
-  ) {
+  const reflectionQuestions =
+    normalizeStringList(parsed.reflectionQuestions, 2, 34, 2) || fallback.reflectionQuestions;
+  let gentleActions = normalizeStringList(parsed.gentleActions, 2, 36)
+    || normalizeStringList(parsed.action ? [parsed.action] : null, 2, 36)
+    || fallback.gentleActions;
+  gentleActions = ensureSelfCareAction(
+    dedupeListAgainstCorpus(gentleActions, [briefSummary, ...positionReadings.map((item) => item.text)], 36),
+    reading
+  );
+
+  let closingLine = dedupeClosingLine(
+    sanitizeCopy(parsed.closingLine || parsed.star) || fallback.closingLine,
+    briefSummary,
+    gentleActions
+  );
+  if (isWeakLine(closingLine)) {
     closingLine = groundClosingLine(reading);
   }
 
@@ -925,6 +1011,7 @@ function normalizeAiResult(parsed, reading) {
 
   return {
     headline,
+    briefSummary,
     presentState,
     innerTheme,
     reminders,
@@ -933,7 +1020,7 @@ function normalizeAiResult(parsed, reading) {
     gentleActions,
     closingLine,
     positionReadings,
-    directAnswer: presentState,
+    directAnswer: briefSummary,
     insight: innerTheme,
     cardLines: positionReadings.map((item) => `${item.position}｜${item.cardName}｜${item.text.slice(0, 24)}`),
     action: gentleActions[0],
@@ -949,10 +1036,7 @@ export function buildGentleFallback(reading) {
   const sig = questionSignals(reading);
   const moodLine = moodLabels[reading.mood] || "有些不确定";
 
-  const reminders = cards.slice(0, 3).map((card) => {
-    const line = interpretCardLine(card, reading);
-    return clampAtSentence(`【${card.position}】${cardLabel(card)}：${line}`, 42);
-  });
+  const reminders = cards.slice(0, 3).map((card) => clampText(card.keywords?.[0] || card.name, 18));
   const positionReadings = cards.map((card) => ({
     position: card.position,
     cardName: card.name,
@@ -994,15 +1078,16 @@ export function buildGentleFallback(reading) {
 
   return {
     headline: groundHeadline(reading) || (sig.asksOffer ? "给答案一点生长时间" : base.headline),
-    presentState: groundPresentState(reading) || clampText(base.directAnswer, 120),
+    briefSummary: buildBriefSummary(reading, null),
+    presentState: compactPresentState(reading, groundPresentState(reading), buildBriefSummary(reading, null)),
     innerTheme: groundInnerTheme(reading),
-    reminders: reminders.length ? reminders : ["也许你需要先放慢一点，再谈选择"],
+    reminders: reminders.length ? reminders : [],
     innerTension: groundInnerTension(reading),
     reflectionQuestions: reflectionQuestions.map((item) => item.slice(0, 38)),
     gentleActions,
     closingLine: groundClosingLine(reading),
     positionReadings,
-    directAnswer: base.directAnswer,
+    directAnswer: buildBriefSummary(reading, null),
     insight: base.insight,
     cardLines: positionReadings.map((item) => `${item.position}｜${item.cardName}｜${item.text.slice(0, 24)}`),
     action: gentleActions[0],
@@ -1017,11 +1102,17 @@ export function buildCompactFallback(reading) {
 export function mergeAiSummary(reading, ai) {
   if (!ai) return reading.summary;
 
-  const sections = [
+  const sections = [];
+  if (ai.briefSummary) {
+    sections.push({ title: "浓缩总结", text: ai.briefSummary, emphasis: true });
+  }
+  sections.push(
     { title: "此刻的状态", text: ai.presentState || ai.directAnswer },
-    { title: "你内心正在关注的主题", text: ai.innerTheme || ai.insight },
-    { title: "这次抽卡给你的提醒", list: ai.reminders }
-  ];
+    { title: "你内心正在关注的主题", text: ai.innerTheme || ai.insight }
+  );
+  if (ai.reminders?.length) {
+    sections.push({ title: "这次抽卡给你的提醒", list: ai.reminders });
+  }
 
   ai.positionReadings?.forEach((item) => {
     sections.push({
