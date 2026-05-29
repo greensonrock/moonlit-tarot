@@ -67,9 +67,9 @@ async function findService(apiKey) {
 }
 
 async function upsertEnv(apiKey, serviceId, envKey, value) {
-  await api(apiKey, `/services/${serviceId}/env-vars`, {
-    method: "POST",
-    body: { envVar: { key: envKey, value } }
+  await api(apiKey, `/services/${serviceId}/env-vars/${encodeURIComponent(envKey)}`, {
+    method: "PUT",
+    body: { key: envKey, value }
   });
 }
 
