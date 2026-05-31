@@ -4,7 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildCompactFallback, generateAiSummary, mergeAiSummary } from "./ai-reading.js";
+import { drawCardsBySelection, drawCardsFromDeck, getDrawConfig, pickRandom } from "./draw-random.js";
 import { getTarotStats, tarotDeck } from "./tarot-data.js";
+import { describeCardWhy, getCardKnowledge } from "./tarot-knowledge.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -55,30 +57,31 @@ const moodHints = {
   release: "你想放下某件事，但真正难的也许是承认它曾经对你很重要。"
 };
 
-function shuffle(items) {
-  const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
-
-async function drawReading({ theme, mood, question, spread }) {
+async function drawReading({ theme, mood, question, spread, selectedSlots }) {
   const positions = spreadPositions[spread] || spreadPositions.three;
   const questionProfile = analyzeQuestion(question, theme);
-  const cards = shuffle(deck).slice(0, positions.length).map((card, index) => {
-    const reversed = Math.random() < 0.34;
+  const drawConfig = getDrawConfig();
+  // 建议2：用户点选位置真正决定抽到的牌；无点选时回退随机抽顶牌
+  const drawn = Array.isArray(selectedSlots) && selectedSlots.length
+    ? drawCardsBySelection(deck, positions.length, selectedSlots, drawConfig)
+    : drawCardsFromDeck(deck, positions.length, drawConfig);
+  const cards = drawn.map(({ card, reversed }, index) => {
+    const position = positions[index];
     const drawnCard = {
       ...card,
       id: `${card.arcana}-${card.name}`,
-      position: positions[index],
+      position,
       orientation: reversed ? "逆位" : "正位",
-      keywords: reversed ? card.reversed : card.upright,
-      shortHint: reversed
-        ? "逆位不是坏消息，它更像是在提醒你看见被忽略的部分。"
-        : card.actionHint
+      keywords: reversed ? card.reversed : card.upright
     };
+    const knowledge = getCardKnowledge(drawnCard);
+    drawnCard.element = drawnCard.element || knowledge?.element || null;
+    drawnCard.imagery = knowledge?.imagery || "";
+    drawnCard.numerologyStage = knowledge?.numerology?.stage || knowledge?.court?.rank || (drawnCard.arcana === "大阿卡那" ? "大阿卡那" : "");
+    drawnCard.why = describeCardWhy(drawnCard, questionProfile);
+    drawnCard.shortHint = reversed
+      ? `逆位：${knowledge?.shadow || "这股能量还没顺畅落地"}，值得认真看一眼。`
+      : (card.actionHint || knowledge?.light || "");
     return {
       ...drawnCard,
       analysis: analyzeCardForQuestion(drawnCard, questionProfile, index, positions.length)
@@ -87,6 +90,7 @@ async function drawReading({ theme, mood, question, spread }) {
 
   const reading = {
     date: new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(new Date()),
+    theme,
     themeLabel: themeLabels[theme] || "心动与关系",
     mood,
     question: question?.trim() || "我现在最需要看见什么？",
@@ -117,16 +121,58 @@ async function drawReading({ theme, mood, question, spread }) {
   return reading;
 }
 
+/**
+ * 问题意图判定（建议5）：从「命中即真」升级为「主题优先 + 加权计分」。
+ * - 用户选定的 theme 拥有最高权重，避免「结果/坚持」等通用词误判领域。
+ * - 强信号词（offer、复合、放下…）加分，弱/通用词（结果、坚持…）只微调，
+ *   且只有在没有明确主题时才足以改变领域归属。
+ */
 function analyzeQuestion(question = "", theme = "relationship") {
   const text = question.trim() || "我现在最需要看见什么？";
-  const includes = (...words) => words.some((word) => text.includes(word));
-  const isRelationship = theme === "relationship" || includes("他", "她", "喜欢", "爱", "关系", "复合", "暧昧", "主动", "联系");
-  const isCareer = theme === "career" || includes("工作", "职业", "事业", "老板", "同事", "offer", "离职", "跳槽", "坚持");
-  const isDecision = includes("该不该", "要不要", "是否", "选择", "继续", "放弃", "离开", "留下");
-  const isFuture = theme === "future" || includes("未来", "三个月", "发展", "结果", "会不会", "能不能");
-  const isEmotion = theme === "emotion" || includes("累", "焦虑", "难过", "情绪", "疲惫", "压力", "睡不着");
-  const isRelease = includes("放下", "走出来", "忘记", "结束", "释怀");
-  const isSelf = theme === "self" || includes("自己", "成长", "内在", "改变", "自信");
+
+  // 每个领域：强信号（+3）、弱信号（+1）
+  const domainSignals = {
+    relationship: { strong: ["复合", "暧昧", "表白", "前任", "喜欢我", "对我的感觉", "这段关系", "在一起"], weak: ["他", "她", "ta", "对方", "喜欢", "爱", "关系", "主动", "联系", "心动"] },
+    career: { strong: ["offer", "录用", "入职", "离职", "跳槽", "面试", "升职", "工作机会", "这份工作"], weak: ["工作", "职业", "事业", "老板", "同事", "岗位", "项目", "坚持"] },
+    emotion: { strong: ["焦虑到", "撑不住", "情绪崩", "睡不着", "很疲惫"], weak: ["累", "焦虑", "难过", "情绪", "疲惫", "压力", "烦"] },
+    self: { strong: ["重新喜欢自己", "成为自己", "自我成长", "走不出来"], weak: ["自己", "成长", "内在", "改变", "自信", "修复"] },
+    future: { strong: ["未来三个月", "接下来会", "发展方向", "该选哪个", "前景"], weak: ["未来", "发展", "方向", "趋势"] }
+  };
+
+  const scoreDomain = (key) => {
+    const sig = domainSignals[key];
+    let s = theme === key ? 5 : 0; // 用户选定主题：最高权重
+    for (const w of sig.strong) if (text.includes(w)) s += 3;
+    for (const w of sig.weak) if (text.includes(w)) s += 1;
+    return s;
+  };
+
+  const scores = {
+    relationship: scoreDomain("relationship"),
+    career: scoreDomain("career"),
+    emotion: scoreDomain("emotion"),
+    self: scoreDomain("self"),
+    future: scoreDomain("future")
+  };
+
+  const isDecision = ["该不该", "要不要", "是否", "选择", "继续", "放弃", "离开", "留下", "还是"].some((w) => text.includes(w));
+  const isRelease = ["放下", "走出来", "忘记", "释怀", "翻篇"].some((w) => text.includes(w));
+
+  // 主导领域：取最高分；并列时按主题 > 关系 > 职业 > 情绪 > 自我 > 未来 的稳定顺序
+  const order = ["relationship", "career", "emotion", "self", "future"];
+  let dominant = order[0];
+  for (const key of order) {
+    if (scores[key] > scores[dominant]) dominant = key;
+  }
+  if (scores[dominant] === 0) dominant = theme in scores ? theme : "future";
+
+  const isRelationship = dominant === "relationship";
+  const isCareer = dominant === "career";
+  const isEmotion = dominant === "emotion";
+  const isSelf = dominant === "self";
+  // 未来：仅当显式未来词或主题为 future，或问题是抉择且无其他强领域
+  const isFuture = dominant === "future" || theme === "future"
+    || (isDecision && scores.relationship + scores.career + scores.emotion + scores.self === 0);
 
   let intent = "自我确认";
   if (isRelationship && isDecision) intent = "关系里的选择";
@@ -300,7 +346,7 @@ function makeAdvice(theme, cards, profile = analyzeQuestion("", theme)) {
 
 function pickKeyword(cards) {
   const pool = cards.flatMap((card) => card.keywords);
-  return pool[Math.floor(Math.random() * pool.length)] || "慢慢确认";
+  return pickRandom(pool) || "慢慢确认";
 }
 
 function pickLuckyColor(theme) {
@@ -349,11 +395,17 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (req.method === "GET" && url.pathname === "/api/health") {
+      const draw = getDrawConfig();
       sendJson(res, {
         status: "ok",
         service: "moonlit-tarot",
         aiEnabled: Boolean(process.env.DMXAPI_KEY),
-        model: process.env.DMXAPI_MODEL || null
+        model: process.env.DMXAPI_MODEL || null,
+        draw: {
+          reverseRate: draw.reverseRate,
+          orientMode: draw.orientMode,
+          rng: "crypto.randomInt"
+        }
       });
       return;
     }

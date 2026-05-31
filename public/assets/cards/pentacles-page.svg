@@ -1,38 +1,29 @@
 <svg width="320" height="520" viewBox="0 0 320 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="星币侍从">
   <rect x="10" y="10" width="300" height="500" rx="30" fill="url(#paper)" stroke="url(#edge)" stroke-width="2"/>
-  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.34)" stroke="rgba(255,255,255,.72)"/>
+  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.30)" stroke="rgba(255,255,255,.7)"/>
   <circle cx="56" cy="74" r="22" fill="#B38A45" opacity=".14"/>
-  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".18"/>
+  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".2"/>
   <text x="160" y="62" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="22" font-weight="700" fill="#2C2439">星币侍从</text>
   <text x="160" y="86" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="600" fill="#7E718D">Page of Pentacles</text>
-  
-  <text x="50" y="125" text-anchor="middle" font-family="Georgia,serif" font-size="32" font-weight="700" fill="#B38A45">Page</text>
-  <text x="270" y="410" text-anchor="middle" font-family="Georgia,serif" font-size="32" font-weight="700" fill="#B38A45">Page</text>
-  <circle cx="160" cy="252" r="102" fill="#B38A45" opacity=".07"/>
-  <rect x="76" y="132" width="168" height="236" rx="32" fill="rgba(255,255,255,.44)" stroke="#B38A45" stroke-width="1.5" opacity=".74"/>
-  
-  
-  <g>
-    <circle cx="160" cy="214" r="34" fill="#B38A45" opacity=".2" stroke="#B38A45" stroke-width="2"/>
-    
-    
-    <path d="M130 185c18-20 42-20 60 0l-12 24h-36l-12-24Z" fill="#F8DFA7" opacity=".72" stroke="#B38A45" stroke-width="2"/>
-    <path d="M104 346c14-54 42-86 56-86s42 32 56 86H104Z" fill="#B38A45" opacity=".16" stroke="#B38A45" stroke-width="2"/>
-    <g opacity="1"><circle cx="160" cy="312" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M160 294l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L160 323l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L160 294Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-  </g>
-  <text x="160" y="398" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">消息 · 好奇</text>
-  <text x="160" y="448" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#B38A45">小阿卡那</text>
-  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">现实学习</text>
+  <clipPath id="win"><rect x="46" y="100" width="228" height="256" rx="18"/></clipPath>
+  <g clip-path="url(#win)">
+    <rect x="46" y="100" width="228" height="256" fill="url(#sky)"/>
+    <circle cx="160" cy="112" r="150" fill="#B38A45" opacity=".05"/><path d="M46 296 L96 250 L138 284 L190 240 L244 288 L274 296 Z" fill="#b9b0d2" opacity="0.35"/><rect x="46" y="296" width="228" height="60" fill="#d6cbaf" opacity="0.45"/><g>
+    <path d="M128.8 312 C133.6 230.4 145.6 222.24 160 222.24 C174.4 222.24 186.4 230.4 191.2 312 Z" fill="#B38A45" opacity=".88"/>
+    <circle cx="160" cy="206.4" r="14.4" fill="#EAC9A6"/>
+  </g><g><circle cx="160" cy="210" r="17.6" fill="#B38A45" opacity=".32"/><circle cx="160" cy="210" r="17.6" fill="none" stroke="#B38A45" stroke-width="2.2"/><path d="M160 196.8 L163.88 204.66 L172.55 205.92 L166.28 212.04 L167.76 220.68 L160 216.6 L152.24 220.68 L153.72 212.04 L147.45 205.92 L156.12 204.66 Z" fill="none" stroke="#B38A45" stroke-width="1.7600000000000002"/></g></g><rect x="46" y="100" width="228" height="256" rx="18" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.5"/>
+  <text x="160" y="402" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">学习务实 · 好消息</text>
+  <text x="160" y="446" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#B38A45">小阿卡那</text>
+  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">踏实好奇</text>
   <defs>
     <linearGradient id="paper" x1="22" y1="18" x2="302" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFFDF8"/>
-      <stop offset=".52" stop-color="#F8EEF7"/>
-      <stop offset="1" stop-color="#EAF4FF"/>
+      <stop stop-color="#FFFDF8"/><stop offset=".52" stop-color="#F8EEF7"/><stop offset="1" stop-color="#EAF4FF"/>
     </linearGradient>
     <linearGradient id="edge" x1="14" y1="10" x2="310" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF8E8"/>
-      <stop offset=".5" stop-color="#F8DFA7"/>
-      <stop offset="1" stop-color="#B38A45"/>
+      <stop stop-color="#FFF8E8"/><stop offset=".5" stop-color="#F8DFA7"/><stop offset="1" stop-color="#B38A45"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="100" x2="0" y2="356" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF6FF"/><stop offset="1" stop-color="#EAF1FF"/>
     </linearGradient>
   </defs>
 </svg>

@@ -1,30 +1,31 @@
 <svg width="320" height="520" viewBox="0 0 320 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="世界">
   <rect x="10" y="10" width="300" height="500" rx="30" fill="url(#paper)" stroke="url(#edge)" stroke-width="2"/>
-  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.34)" stroke="rgba(255,255,255,.72)"/>
+  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.30)" stroke="rgba(255,255,255,.7)"/>
   <circle cx="56" cy="74" r="22" fill="#9A78C9" opacity=".14"/>
-  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".18"/>
+  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".2"/>
   <text x="160" y="62" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="22" font-weight="700" fill="#2C2439">世界</text>
   <text x="160" y="86" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="600" fill="#7E718D">The World</text>
-  
-  <text x="160" y="180" text-anchor="middle" font-family="Georgia,serif" font-size="42" fill="#9A78C9" opacity=".28">XXI</text>
-  <circle cx="160" cy="252" r="90" fill="#9A78C9" opacity=".08"/>
-  <circle cx="160" cy="252" r="68" stroke="#9A78C9" stroke-width="2" opacity=".45"/>
-  <path d="M92 252c36-48 100-48 136 0-36 48-100 48-136 0Z" stroke="#C99B52" stroke-width="2" opacity=".62"/>
-  <text x="160" y="282" text-anchor="middle" font-family="Georgia,serif" font-size="88" fill="#9A78C9">◍</text>
-  <path d="M160 126l8 20 22 2-17 14 5 22-18-12-18 12 5-22-17-14 22-2 8-20Z" fill="#C99B52" opacity=".6"/>
-  <text x="160" y="386" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">整合 · 圆满</text>
-  <text x="160" y="448" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#9A78C9">大阿卡那</text>
-  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">完成</text>
+  <clipPath id="win"><rect x="46" y="100" width="228" height="256" rx="18"/></clipPath>
+  <g clip-path="url(#win)">
+    <rect x="46" y="100" width="228" height="256" fill="url(#sky)"/>
+    <circle cx="160" cy="112" r="150" fill="#9A78C9" opacity=".05"/><g><ellipse cx="160" cy="228" rx="64" ry="92" fill="none" stroke="#7fae6f" stroke-width="5" opacity=".6"/></g>
+    <g>
+    <path d="M135.04 282 C138.88 216.72 148.48 210.19 160 210.19 C171.52 210.19 181.12 216.72 184.96 282 Z" fill="#cf8aa6" opacity=".88"/>
+    <circle cx="160" cy="197.52" r="11.52" fill="#EAC9A6"/>
+  </g>
+    <path d="M74 120 L75.59 123.82 L79.71 124.15 L76.57 126.83 L77.53 130.85 L74 128.7 L70.47 130.85 L71.43 126.83 L68.29 124.15 L72.41 123.82 Z" fill="#9A78C9" opacity=".9"/><path d="M246 120 L247.59 123.82 L251.71 124.15 L248.57 126.83 L249.53 130.85 L246 128.7 L242.47 130.85 L243.43 126.83 L240.29 124.15 L244.41 123.82 Z" fill="#9A78C9" opacity=".9"/><path d="M74 328 L75.59 331.82 L79.71 332.15 L76.57 334.83 L77.53 338.85 L74 336.7 L70.47 338.85 L71.43 334.83 L68.29 332.15 L72.41 331.82 Z" fill="#9A78C9" opacity=".9"/><path d="M246 328 L247.59 331.82 L251.71 332.15 L248.57 334.83 L249.53 338.85 L246 336.7 L242.47 338.85 L243.43 334.83 L240.29 332.15 L244.41 331.82 Z" fill="#9A78C9" opacity=".9"/></g><rect x="46" y="100" width="228" height="256" rx="18" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.5"/>
+  <text x="160" y="402" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">完成 · 整合</text>
+  <text x="160" y="446" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#9A78C9">大阿卡那</text>
+  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">圆满</text>
   <defs>
     <linearGradient id="paper" x1="22" y1="18" x2="302" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFFDF8"/>
-      <stop offset=".52" stop-color="#F8EEF7"/>
-      <stop offset="1" stop-color="#EAF4FF"/>
+      <stop stop-color="#FFFDF8"/><stop offset=".52" stop-color="#F8EEF7"/><stop offset="1" stop-color="#EAF4FF"/>
     </linearGradient>
     <linearGradient id="edge" x1="14" y1="10" x2="310" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF8E8"/>
-      <stop offset=".5" stop-color="#F8DFA7"/>
-      <stop offset="1" stop-color="#9A78C9"/>
+      <stop stop-color="#FFF8E8"/><stop offset=".5" stop-color="#F8DFA7"/><stop offset="1" stop-color="#9A78C9"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="100" x2="0" y2="356" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF6FF"/><stop offset="1" stop-color="#EAF1FF"/>
     </linearGradient>
   </defs>
 </svg>

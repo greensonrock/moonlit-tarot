@@ -1,39 +1,26 @@
 <svg width="320" height="520" viewBox="0 0 320 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="星币十">
   <rect x="10" y="10" width="300" height="500" rx="30" fill="url(#paper)" stroke="url(#edge)" stroke-width="2"/>
-  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.34)" stroke="rgba(255,255,255,.72)"/>
+  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.30)" stroke="rgba(255,255,255,.7)"/>
   <circle cx="56" cy="74" r="22" fill="#B38A45" opacity=".14"/>
-  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".18"/>
+  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".2"/>
   <text x="160" y="62" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="22" font-weight="700" fill="#2C2439">星币十</text>
   <text x="160" y="86" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="600" fill="#7E718D">Ten of Pentacles</text>
-  
-  <text x="50" y="125" text-anchor="middle" font-family="Georgia,serif" font-size="32" font-weight="700" fill="#B38A45">10</text>
-  <text x="270" y="410" text-anchor="middle" font-family="Georgia,serif" font-size="32" font-weight="700" fill="#B38A45">10</text>
-  <circle cx="160" cy="252" r="102" fill="#B38A45" opacity=".07"/>
-  <rect x="76" y="132" width="168" height="236" rx="32" fill="rgba(255,255,255,.44)" stroke="#B38A45" stroke-width="1.5" opacity=".74"/>
-  <g opacity="0.95"><circle cx="94" cy="196" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M94 178l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L94 207l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L94 178Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="138" cy="196" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M138 178l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L138 207l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L138 178Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="182" cy="196" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M182 178l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L182 207l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L182 178Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="226" cy="196" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M226 178l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L226 207l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L226 178Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="94" cy="250" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M94 232l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L94 261l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L94 232Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="138" cy="250" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M138 232l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L138 261l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L138 232Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="182" cy="250" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M182 232l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L182 261l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L182 232Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="226" cy="250" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M226 232l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L226 261l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L226 232Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="94" cy="304" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M94 286l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L94 315l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L94 286Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="138" cy="304" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M138 286l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L138 315l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L138 286Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-  
-  <text x="160" y="398" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">承担 · 阶段结果</text>
-  <text x="160" y="448" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#B38A45">小阿卡那</text>
-  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">现实完成</text>
+  <clipPath id="win"><rect x="46" y="100" width="228" height="256" rx="18"/></clipPath>
+  <g clip-path="url(#win)">
+    <rect x="46" y="100" width="228" height="256" fill="url(#sky)"/>
+    <circle cx="160" cy="112" r="150" fill="#B38A45" opacity=".05"/><path d="M46 296 L96 250 L138 284 L190 240 L244 288 L274 296 Z" fill="#c7bda0" opacity="0.3"/><rect x="46" y="296" width="228" height="60" fill="#d3c39a" opacity="0.45"/><g><circle cx="102" cy="146" r="11.2" fill="#B38A45" opacity=".32"/><circle cx="102" cy="146" r="11.2" fill="none" stroke="#B38A45" stroke-width="1.4"/><path d="M102 137.6 L104.47 142.6 L109.99 143.4 L105.99 147.3 L106.94 152.8 L102 150.2 L97.06 152.8 L98.01 147.3 L94.01 143.4 L99.53 142.6 Z" fill="none" stroke="#B38A45" stroke-width="1.1199999999999999"/></g><g><circle cx="218" cy="146" r="11.2" fill="#B38A45" opacity=".32"/><circle cx="218" cy="146" r="11.2" fill="none" stroke="#B38A45" stroke-width="1.4"/><path d="M218 137.6 L220.47 142.6 L225.99 143.4 L221.99 147.3 L222.94 152.8 L218 150.2 L213.06 152.8 L214.01 147.3 L210.01 143.4 L215.53 142.6 Z" fill="none" stroke="#B38A45" stroke-width="1.1199999999999999"/></g><g><circle cx="160" cy="178" r="11.2" fill="#B38A45" opacity=".32"/><circle cx="160" cy="178" r="11.2" fill="none" stroke="#B38A45" stroke-width="1.4"/><path d="M160 169.6 L162.47 174.6 L167.99 175.4 L163.99 179.3 L164.94 184.8 L160 182.2 L155.06 184.8 L156.01 179.3 L152.01 175.4 L157.53 174.6 Z" fill="none" stroke="#B38A45" stroke-width="1.1199999999999999"/></g><g><circle cx="102" cy="214" r="11.2" fill="#B38A45" opacity=".32"/><circle cx="102" cy="214" r="11.2" fill="none" stroke="#B38A45" stroke-width="1.4"/><path d="M102 205.6 L104.47 210.6 L109.99 211.4 L105.99 215.3 L106.94 220.8 L102 218.2 L97.06 220.8 L98.01 215.3 L94.01 211.4 L99.53 210.6 Z" fill="none" stroke="#B38A45" stroke-width="1.1199999999999999"/></g><g><circle cx="218" cy="214" r="11.2" fill="#B38A45" opacity=".32"/><circle cx="218" cy="214" r="11.2" fill="none" stroke="#B38A45" stroke-width="1.4"/><path d="M218 205.6 L220.47 210.6 L225.99 211.4 L221.99 215.3 L222.94 220.8 L218 218.2 L213.06 220.8 L214.01 215.3 L210.01 211.4 L215.53 210.6 Z" fill="none" stroke="#B38A45" stroke-width="1.1199999999999999"/></g><g><circle cx="102" cy="266" r="11.2" fill="#B38A45" opacity=".32"/><circle cx="102" cy="266" r="11.2" fill="none" stroke="#B38A45" stroke-width="1.4"/><path d="M102 257.6 L104.47 262.6 L109.99 263.4 L105.99 267.3 L106.94 272.8 L102 270.2 L97.06 272.8 L98.01 267.3 L94.01 263.4 L99.53 262.6 Z" fill="none" stroke="#B38A45" stroke-width="1.1199999999999999"/></g><g><circle cx="218" cy="266" r="11.2" fill="#B38A45" opacity=".32"/><circle cx="218" cy="266" r="11.2" fill="none" stroke="#B38A45" stroke-width="1.4"/><path d="M218 257.6 L220.47 262.6 L225.99 263.4 L221.99 267.3 L222.94 272.8 L218 270.2 L213.06 272.8 L214.01 267.3 L210.01 263.4 L215.53 262.6 Z" fill="none" stroke="#B38A45" stroke-width="1.1199999999999999"/></g><g><circle cx="160" cy="250" r="11.2" fill="#B38A45" opacity=".32"/><circle cx="160" cy="250" r="11.2" fill="none" stroke="#B38A45" stroke-width="1.4"/><path d="M160 241.6 L162.47 246.6 L167.99 247.4 L163.99 251.3 L164.94 256.8 L160 254.2 L155.06 256.8 L156.01 251.3 L152.01 247.4 L157.53 246.6 Z" fill="none" stroke="#B38A45" stroke-width="1.1199999999999999"/></g><g><circle cx="102" cy="312" r="11.2" fill="#B38A45" opacity=".32"/><circle cx="102" cy="312" r="11.2" fill="none" stroke="#B38A45" stroke-width="1.4"/><path d="M102 303.6 L104.47 308.6 L109.99 309.4 L105.99 313.3 L106.94 318.8 L102 316.2 L97.06 318.8 L98.01 313.3 L94.01 309.4 L99.53 308.6 Z" fill="none" stroke="#B38A45" stroke-width="1.1199999999999999"/></g><g><circle cx="218" cy="312" r="11.2" fill="#B38A45" opacity=".32"/><circle cx="218" cy="312" r="11.2" fill="none" stroke="#B38A45" stroke-width="1.4"/><path d="M218 303.6 L220.47 308.6 L225.99 309.4 L221.99 313.3 L222.94 318.8 L218 316.2 L213.06 318.8 L214.01 313.3 L210.01 309.4 L215.53 308.6 Z" fill="none" stroke="#B38A45" stroke-width="1.1199999999999999"/></g></g><rect x="46" y="100" width="228" height="256" rx="18" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.5"/>
+  <text x="160" y="402" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">家族传承 · 长期稳定</text>
+  <text x="160" y="446" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#B38A45">小阿卡那</text>
+  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">物质圆满</text>
   <defs>
     <linearGradient id="paper" x1="22" y1="18" x2="302" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFFDF8"/>
-      <stop offset=".52" stop-color="#F8EEF7"/>
-      <stop offset="1" stop-color="#EAF4FF"/>
+      <stop stop-color="#FFFDF8"/><stop offset=".52" stop-color="#F8EEF7"/><stop offset="1" stop-color="#EAF4FF"/>
     </linearGradient>
     <linearGradient id="edge" x1="14" y1="10" x2="310" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF8E8"/>
-      <stop offset=".5" stop-color="#F8DFA7"/>
-      <stop offset="1" stop-color="#B38A45"/>
+      <stop stop-color="#FFF8E8"/><stop offset=".5" stop-color="#F8DFA7"/><stop offset="1" stop-color="#B38A45"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="100" x2="0" y2="356" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF6FF"/><stop offset="1" stop-color="#EAF1FF"/>
     </linearGradient>
   </defs>
 </svg>

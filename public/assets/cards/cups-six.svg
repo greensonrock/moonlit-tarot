@@ -1,35 +1,44 @@
 <svg width="320" height="520" viewBox="0 0 320 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="圣杯六">
   <rect x="10" y="10" width="300" height="500" rx="30" fill="url(#paper)" stroke="url(#edge)" stroke-width="2"/>
-  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.34)" stroke="rgba(255,255,255,.72)"/>
+  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.30)" stroke="rgba(255,255,255,.7)"/>
   <circle cx="56" cy="74" r="22" fill="#6D8FD7" opacity=".14"/>
-  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".18"/>
+  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".2"/>
   <text x="160" y="62" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="22" font-weight="700" fill="#2C2439">圣杯六</text>
   <text x="160" y="86" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="600" fill="#7E718D">Six of Cups</text>
-  
-  <text x="50" y="125" text-anchor="middle" font-family="Georgia,serif" font-size="32" font-weight="700" fill="#6D8FD7">6</text>
-  <text x="270" y="410" text-anchor="middle" font-family="Georgia,serif" font-size="32" font-weight="700" fill="#6D8FD7">6</text>
-  <circle cx="160" cy="252" r="102" fill="#6D8FD7" opacity=".07"/>
-  <rect x="76" y="132" width="168" height="236" rx="32" fill="rgba(255,255,255,.44)" stroke="#6D8FD7" stroke-width="1.5" opacity=".74"/>
-  <g opacity="0.95"><path d="M98 205h36v24c0 16-36 16-36 0v-24Z" fill="none" stroke="#6D8FD7" stroke-width="4" stroke-linejoin="round"/><path d="M106 247h20M116 231v16" stroke="#6D8FD7" stroke-width="4" stroke-linecap="round"/></g>
-<g opacity="0.95"><path d="M142 205h36v24c0 16-36 16-36 0v-24Z" fill="none" stroke="#6D8FD7" stroke-width="4" stroke-linejoin="round"/><path d="M150 247h20M160 231v16" stroke="#6D8FD7" stroke-width="4" stroke-linecap="round"/></g>
-<g opacity="0.95"><path d="M186 205h36v24c0 16-36 16-36 0v-24Z" fill="none" stroke="#6D8FD7" stroke-width="4" stroke-linejoin="round"/><path d="M194 247h20M204 231v16" stroke="#6D8FD7" stroke-width="4" stroke-linecap="round"/></g>
-<g opacity="0.95"><path d="M98 259h36v24c0 16-36 16-36 0v-24Z" fill="none" stroke="#6D8FD7" stroke-width="4" stroke-linejoin="round"/><path d="M106 301h20M116 285v16" stroke="#6D8FD7" stroke-width="4" stroke-linecap="round"/></g>
-<g opacity="0.95"><path d="M142 259h36v24c0 16-36 16-36 0v-24Z" fill="none" stroke="#6D8FD7" stroke-width="4" stroke-linejoin="round"/><path d="M150 301h20M160 285v16" stroke="#6D8FD7" stroke-width="4" stroke-linecap="round"/></g>
-<g opacity="0.95"><path d="M186 259h36v24c0 16-36 16-36 0v-24Z" fill="none" stroke="#6D8FD7" stroke-width="4" stroke-linejoin="round"/><path d="M194 301h20M204 285v16" stroke="#6D8FD7" stroke-width="4" stroke-linecap="round"/></g>
-  
-  <text x="160" y="398" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">互惠 · 修复</text>
-  <text x="160" y="448" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#6D8FD7">小阿卡那</text>
-  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">情绪流动</text>
+  <clipPath id="win"><rect x="46" y="100" width="228" height="256" rx="18"/></clipPath>
+  <g clip-path="url(#win)">
+    <rect x="46" y="100" width="228" height="256" fill="url(#sky)"/>
+    <circle cx="160" cy="112" r="150" fill="#6D8FD7" opacity=".05"/><path d="M46 296 L96 250 L138 284 L190 240 L244 288 L274 296 Z" fill="#b4b9d8" opacity="0.3"/><rect x="46" y="322" width="228" height="34" fill="#8fb3df" opacity="0.45"/><path d="M46 334 q24 -7 48 0 t48 0 t48 0 t48 0 t48 0" fill="none" stroke="#fff" stroke-width="1.4" opacity=".5"/><path d="M46 346 q24 -7 48 0 t48 0 t48 0 t48 0 t48 0" fill="none" stroke="#fff" stroke-width="1.4" opacity=".5"/><path d="M46 358 q24 -7 48 0 t48 0 t48 0 t48 0 t48 0" fill="none" stroke="#fff" stroke-width="1.4" opacity=".5"/><g fill="#6D8FD7" opacity=".85"><path d="M100.16 149.44 Q110 165.84 119.84 149.44 Z"/>
+      <rect x="108.36 " y="159.28" width="3.28" height="8.2"/>
+      <rect x="102.62" y="167.48" width="14.76" height="3.28" rx="2"/>
+      <ellipse cx="110" cy="149.44" rx="9.84" ry="2.788" fill="#fff" opacity=".55"/></g><g fill="#6D8FD7" opacity=".85"><path d="M200.16 149.44 Q210 165.84 219.84 149.44 Z"/>
+      <rect x="208.36 " y="159.28" width="3.28" height="8.2"/>
+      <rect x="202.62" y="167.48" width="14.76" height="3.28" rx="2"/>
+      <ellipse cx="210" cy="149.44" rx="9.84" ry="2.788" fill="#fff" opacity=".55"/></g><g fill="#6D8FD7" opacity=".85"><path d="M100.16 219.44 Q110 235.84 119.84 219.44 Z"/>
+      <rect x="108.36 " y="229.28" width="3.28" height="8.2"/>
+      <rect x="102.62" y="237.48" width="14.76" height="3.28" rx="2"/>
+      <ellipse cx="110" cy="219.44" rx="9.84" ry="2.788" fill="#fff" opacity=".55"/></g><g fill="#6D8FD7" opacity=".85"><path d="M200.16 219.44 Q210 235.84 219.84 219.44 Z"/>
+      <rect x="208.36 " y="229.28" width="3.28" height="8.2"/>
+      <rect x="202.62" y="237.48" width="14.76" height="3.28" rx="2"/>
+      <ellipse cx="210" cy="219.44" rx="9.84" ry="2.788" fill="#fff" opacity=".55"/></g><g fill="#6D8FD7" opacity=".85"><path d="M100.16 289.44 Q110 305.84 119.84 289.44 Z"/>
+      <rect x="108.36 " y="299.28" width="3.28" height="8.2"/>
+      <rect x="102.62" y="307.48" width="14.76" height="3.28" rx="2"/>
+      <ellipse cx="110" cy="289.44" rx="9.84" ry="2.788" fill="#fff" opacity=".55"/></g><g fill="#6D8FD7" opacity=".85"><path d="M200.16 289.44 Q210 305.84 219.84 289.44 Z"/>
+      <rect x="208.36 " y="299.28" width="3.28" height="8.2"/>
+      <rect x="202.62" y="307.48" width="14.76" height="3.28" rx="2"/>
+      <ellipse cx="210" cy="289.44" rx="9.84" ry="2.788" fill="#fff" opacity=".55"/></g></g><rect x="46" y="100" width="228" height="256" rx="18" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.5"/>
+  <text x="160" y="402" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">怀旧温暖 · 善意馈赠</text>
+  <text x="160" y="446" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#6D8FD7">小阿卡那</text>
+  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">纯真回忆</text>
   <defs>
     <linearGradient id="paper" x1="22" y1="18" x2="302" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFFDF8"/>
-      <stop offset=".52" stop-color="#F8EEF7"/>
-      <stop offset="1" stop-color="#EAF4FF"/>
+      <stop stop-color="#FFFDF8"/><stop offset=".52" stop-color="#F8EEF7"/><stop offset="1" stop-color="#EAF4FF"/>
     </linearGradient>
     <linearGradient id="edge" x1="14" y1="10" x2="310" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF8E8"/>
-      <stop offset=".5" stop-color="#F8DFA7"/>
-      <stop offset="1" stop-color="#6D8FD7"/>
+      <stop stop-color="#FFF8E8"/><stop offset=".5" stop-color="#F8DFA7"/><stop offset="1" stop-color="#6D8FD7"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="100" x2="0" y2="356" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF6FF"/><stop offset="1" stop-color="#EAF1FF"/>
     </linearGradient>
   </defs>
 </svg>

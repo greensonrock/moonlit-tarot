@@ -1,37 +1,26 @@
 <svg width="320" height="520" viewBox="0 0 320 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="星币八">
   <rect x="10" y="10" width="300" height="500" rx="30" fill="url(#paper)" stroke="url(#edge)" stroke-width="2"/>
-  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.34)" stroke="rgba(255,255,255,.72)"/>
+  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.30)" stroke="rgba(255,255,255,.7)"/>
   <circle cx="56" cy="74" r="22" fill="#B38A45" opacity=".14"/>
-  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".18"/>
+  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".2"/>
   <text x="160" y="62" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="22" font-weight="700" fill="#2C2439">星币八</text>
   <text x="160" y="86" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="600" fill="#7E718D">Eight of Pentacles</text>
-  
-  <text x="50" y="125" text-anchor="middle" font-family="Georgia,serif" font-size="32" font-weight="700" fill="#B38A45">8</text>
-  <text x="270" y="410" text-anchor="middle" font-family="Georgia,serif" font-size="32" font-weight="700" fill="#B38A45">8</text>
-  <circle cx="160" cy="252" r="102" fill="#B38A45" opacity=".07"/>
-  <rect x="76" y="132" width="168" height="236" rx="32" fill="rgba(255,255,255,.44)" stroke="#B38A45" stroke-width="1.5" opacity=".74"/>
-  <g opacity="0.95"><circle cx="94" cy="223" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M94 205l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L94 234l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L94 205Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="138" cy="223" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M138 205l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L138 234l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L138 205Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="182" cy="223" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M182 205l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L182 234l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L182 205Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="226" cy="223" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M226 205l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L226 234l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L226 205Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="94" cy="277" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M94 259l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L94 288l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L94 259Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="138" cy="277" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M138 259l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L138 288l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L138 259Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="182" cy="277" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M182 259l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L182 288l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L182 259Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-<g opacity="0.95"><circle cx="226" cy="277" r="24" fill="none" stroke="#B38A45" stroke-width="4"/><path d="M226 259l5.6 11.4 12.6 1.8-9.1 8.9 2.1 12.5L226 288l-11.2 5.9 2.1-12.5-9.1-8.9 12.6-1.8L226 259Z" fill="#F8DFA7" stroke="#B38A45" stroke-width="1.5"/></g>
-  
-  <text x="160" y="398" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">练习 · 专注</text>
-  <text x="160" y="448" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#B38A45">小阿卡那</text>
-  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">现实推进</text>
+  <clipPath id="win"><rect x="46" y="100" width="228" height="256" rx="18"/></clipPath>
+  <g clip-path="url(#win)">
+    <rect x="46" y="100" width="228" height="256" fill="url(#sky)"/>
+    <circle cx="160" cy="112" r="150" fill="#B38A45" opacity=".05"/><path d="M46 296 L96 250 L138 284 L190 240 L244 288 L274 296 Z" fill="#c7bda0" opacity="0.3"/><rect x="46" y="296" width="228" height="60" fill="#d3c39a" opacity="0.45"/><g><circle cx="110" cy="148" r="13.12" fill="#B38A45" opacity=".32"/><circle cx="110" cy="148" r="13.12" fill="none" stroke="#B38A45" stroke-width="1.64"/><path d="M110 138.16 L112.89 144.02 L119.36 144.96 L114.68 149.52 L115.78 155.96 L110 152.92 L104.22 155.96 L105.32 149.52 L100.64 144.96 L107.11 144.02 Z" fill="none" stroke="#B38A45" stroke-width="1.312"/></g><g><circle cx="210" cy="148" r="13.12" fill="#B38A45" opacity=".32"/><circle cx="210" cy="148" r="13.12" fill="none" stroke="#B38A45" stroke-width="1.64"/><path d="M210 138.16 L212.89 144.02 L219.36 144.96 L214.68 149.52 L215.78 155.96 L210 152.92 L204.22 155.96 L205.32 149.52 L200.64 144.96 L207.11 144.02 Z" fill="none" stroke="#B38A45" stroke-width="1.312"/></g><g><circle cx="110" cy="206" r="13.12" fill="#B38A45" opacity=".32"/><circle cx="110" cy="206" r="13.12" fill="none" stroke="#B38A45" stroke-width="1.64"/><path d="M110 196.16 L112.89 202.02 L119.36 202.96 L114.68 207.52 L115.78 213.96 L110 210.92 L104.22 213.96 L105.32 207.52 L100.64 202.96 L107.11 202.02 Z" fill="none" stroke="#B38A45" stroke-width="1.312"/></g><g><circle cx="210" cy="206" r="13.12" fill="#B38A45" opacity=".32"/><circle cx="210" cy="206" r="13.12" fill="none" stroke="#B38A45" stroke-width="1.64"/><path d="M210 196.16 L212.89 202.02 L219.36 202.96 L214.68 207.52 L215.78 213.96 L210 210.92 L204.22 213.96 L205.32 207.52 L200.64 202.96 L207.11 202.02 Z" fill="none" stroke="#B38A45" stroke-width="1.312"/></g><g><circle cx="110" cy="264" r="13.12" fill="#B38A45" opacity=".32"/><circle cx="110" cy="264" r="13.12" fill="none" stroke="#B38A45" stroke-width="1.64"/><path d="M110 254.16 L112.89 260.02 L119.36 260.96 L114.68 265.52 L115.78 271.96 L110 268.92 L104.22 271.96 L105.32 265.52 L100.64 260.96 L107.11 260.02 Z" fill="none" stroke="#B38A45" stroke-width="1.312"/></g><g><circle cx="210" cy="264" r="13.12" fill="#B38A45" opacity=".32"/><circle cx="210" cy="264" r="13.12" fill="none" stroke="#B38A45" stroke-width="1.64"/><path d="M210 254.16 L212.89 260.02 L219.36 260.96 L214.68 265.52 L215.78 271.96 L210 268.92 L204.22 271.96 L205.32 265.52 L200.64 260.96 L207.11 260.02 Z" fill="none" stroke="#B38A45" stroke-width="1.312"/></g><g><circle cx="110" cy="320" r="13.12" fill="#B38A45" opacity=".32"/><circle cx="110" cy="320" r="13.12" fill="none" stroke="#B38A45" stroke-width="1.64"/><path d="M110 310.16 L112.89 316.02 L119.36 316.96 L114.68 321.52 L115.78 327.96 L110 324.92 L104.22 327.96 L105.32 321.52 L100.64 316.96 L107.11 316.02 Z" fill="none" stroke="#B38A45" stroke-width="1.312"/></g><g><circle cx="210" cy="320" r="13.12" fill="#B38A45" opacity=".32"/><circle cx="210" cy="320" r="13.12" fill="none" stroke="#B38A45" stroke-width="1.64"/><path d="M210 310.16 L212.89 316.02 L219.36 316.96 L214.68 321.52 L215.78 327.96 L210 324.92 L204.22 327.96 L205.32 321.52 L200.64 316.96 L207.11 316.02 Z" fill="none" stroke="#B38A45" stroke-width="1.312"/></g></g><rect x="46" y="100" width="228" height="256" rx="18" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.5"/>
+  <text x="160" y="402" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">专注技艺 · 勤勉打磨</text>
+  <text x="160" y="446" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#B38A45">小阿卡那</text>
+  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">质量至上</text>
   <defs>
     <linearGradient id="paper" x1="22" y1="18" x2="302" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFFDF8"/>
-      <stop offset=".52" stop-color="#F8EEF7"/>
-      <stop offset="1" stop-color="#EAF4FF"/>
+      <stop stop-color="#FFFDF8"/><stop offset=".52" stop-color="#F8EEF7"/><stop offset="1" stop-color="#EAF4FF"/>
     </linearGradient>
     <linearGradient id="edge" x1="14" y1="10" x2="310" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF8E8"/>
-      <stop offset=".5" stop-color="#F8DFA7"/>
-      <stop offset="1" stop-color="#B38A45"/>
+      <stop stop-color="#FFF8E8"/><stop offset=".5" stop-color="#F8DFA7"/><stop offset="1" stop-color="#B38A45"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="100" x2="0" y2="356" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF6FF"/><stop offset="1" stop-color="#EAF1FF"/>
     </linearGradient>
   </defs>
 </svg>

@@ -1,30 +1,39 @@
 <svg width="320" height="520" viewBox="0 0 320 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="魔术师">
   <rect x="10" y="10" width="300" height="500" rx="30" fill="url(#paper)" stroke="url(#edge)" stroke-width="2"/>
-  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.34)" stroke="rgba(255,255,255,.72)"/>
+  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.30)" stroke="rgba(255,255,255,.7)"/>
   <circle cx="56" cy="74" r="22" fill="#9A78C9" opacity=".14"/>
-  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".18"/>
+  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".2"/>
   <text x="160" y="62" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="22" font-weight="700" fill="#2C2439">魔术师</text>
   <text x="160" y="86" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="600" fill="#7E718D">The Magician</text>
-  
-  <text x="160" y="180" text-anchor="middle" font-family="Georgia,serif" font-size="42" fill="#9A78C9" opacity=".28">I</text>
-  <circle cx="160" cy="252" r="90" fill="#9A78C9" opacity=".08"/>
-  <circle cx="160" cy="252" r="68" stroke="#9A78C9" stroke-width="2" opacity=".45"/>
-  <path d="M92 252c36-48 100-48 136 0-36 48-100 48-136 0Z" stroke="#C99B52" stroke-width="2" opacity=".62"/>
-  <text x="160" y="282" text-anchor="middle" font-family="Georgia,serif" font-size="88" fill="#9A78C9">✦</text>
-  <path d="M160 126l8 20 22 2-17 14 5 22-18-12-18 12 5-22-17-14 22-2 8-20Z" fill="#C99B52" opacity=".6"/>
-  <text x="160" y="386" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">资源整合 · 显化</text>
-  <text x="160" y="448" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#9A78C9">大阿卡那</text>
-  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">主动创造</text>
+  <clipPath id="win"><rect x="46" y="100" width="228" height="256" rx="18"/></clipPath>
+  <g clip-path="url(#win)">
+    <rect x="46" y="100" width="228" height="256" fill="url(#sky)"/>
+    <circle cx="160" cy="112" r="150" fill="#9A78C9" opacity=".05"/><rect x="46" y="296" width="228" height="60" fill="#e3dcc8" opacity="0.5"/><text x="160" y="146" text-anchor="middle" font-size="26" fill="#C99B52">∞</text>
+    <g>
+    <path d="M125.68 296 C130.96 206.24 144.16 197.26 160 197.26 C175.84 197.26 189.04 206.24 194.32 296 Z" fill="#9A78C9" opacity=".88"/>
+    <circle cx="160" cy="179.84" r="15.84" fill="#EAC9A6"/>
+  </g>
+    <line x1="160" y1="186" x2="160" y2="150" stroke="#C99B52" stroke-width="4" stroke-linecap="round"/>
+    <rect x="108" y="300" width="104" height="10" rx="4" fill="#cbb98f" opacity=".7"/>
+    <g fill="#6D8FD7" opacity=".85"><path d="M115.6 286.4 Q124 300.4 132.4 286.4 Z"/>
+      <rect x="122.6 " y="294.8" width="2.8" height="7"/>
+      <rect x="117.7" y="301.8" width="12.6" height="2.8" rx="2"/>
+      <ellipse cx="124" cy="286.4" rx="8.399999999999999" ry="2.38" fill="#fff" opacity=".55"/></g><g stroke="#7F84A8" stroke-width="1.7999999999999998" stroke-linecap="round"><line x1="148" y1="276.4" x2="148" y2="307.6"/><line x1="142.6" y1="298" x2="153.4" y2="298"/></g><circle cx="148" cy="307.6" r="1.7999999999999998" fill="#7F84A8"/><g><line x1="174" y1="277.6" x2="174" y2="306.4" stroke="#C56B74" stroke-width="2.4" stroke-linecap="round"/>
+      <circle cx="174" cy="277.6" r="1.7999999999999998" fill="#7fae6f"/>
+      <path d="M174 286 q4.8 -2.4 6 2.4" fill="none" stroke="#7fae6f" stroke-width="1.2"/>
+      <path d="M174 294.4 q-4.8 -2.4 -6 2.4" fill="none" stroke="#7fae6f" stroke-width="1.2"/></g><g><circle cx="198" cy="292" r="9.6" fill="#B38A45" opacity=".32"/><circle cx="198" cy="292" r="9.6" fill="none" stroke="#B38A45" stroke-width="1.2"/><path d="M198 284.8 L200.12 289.09 L204.85 289.78 L201.42 293.11 L202.23 297.82 L198 295.6 L193.77 297.82 L194.58 293.11 L191.15 289.78 L195.88 289.09 Z" fill="none" stroke="#B38A45" stroke-width="0.96"/></g></g><rect x="46" y="100" width="228" height="256" rx="18" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.5"/>
+  <text x="160" y="402" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">主动创造 · 资源整合</text>
+  <text x="160" y="446" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#9A78C9">大阿卡那</text>
+  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">显化</text>
   <defs>
     <linearGradient id="paper" x1="22" y1="18" x2="302" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFFDF8"/>
-      <stop offset=".52" stop-color="#F8EEF7"/>
-      <stop offset="1" stop-color="#EAF4FF"/>
+      <stop stop-color="#FFFDF8"/><stop offset=".52" stop-color="#F8EEF7"/><stop offset="1" stop-color="#EAF4FF"/>
     </linearGradient>
     <linearGradient id="edge" x1="14" y1="10" x2="310" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF8E8"/>
-      <stop offset=".5" stop-color="#F8DFA7"/>
-      <stop offset="1" stop-color="#9A78C9"/>
+      <stop stop-color="#FFF8E8"/><stop offset=".5" stop-color="#F8DFA7"/><stop offset="1" stop-color="#9A78C9"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="100" x2="0" y2="356" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF6FF"/><stop offset="1" stop-color="#EAF1FF"/>
     </linearGradient>
   </defs>
 </svg>

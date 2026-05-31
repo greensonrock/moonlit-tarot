@@ -1,31 +1,32 @@
 <svg width="320" height="520" viewBox="0 0 320 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="权杖二">
   <rect x="10" y="10" width="300" height="500" rx="30" fill="url(#paper)" stroke="url(#edge)" stroke-width="2"/>
-  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.34)" stroke="rgba(255,255,255,.72)"/>
+  <rect x="28" y="28" width="264" height="464" rx="22" fill="rgba(255,255,255,.30)" stroke="rgba(255,255,255,.7)"/>
   <circle cx="56" cy="74" r="22" fill="#C56B74" opacity=".14"/>
-  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".18"/>
+  <circle cx="264" cy="446" r="30" fill="#F8DFA7" opacity=".2"/>
   <text x="160" y="62" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="22" font-weight="700" fill="#2C2439">权杖二</text>
   <text x="160" y="86" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="600" fill="#7E718D">Two of Wands</text>
-  
-  <text x="50" y="125" text-anchor="middle" font-family="Georgia,serif" font-size="32" font-weight="700" fill="#C56B74">2</text>
-  <text x="270" y="410" text-anchor="middle" font-family="Georgia,serif" font-size="32" font-weight="700" fill="#C56B74">2</text>
-  <circle cx="160" cy="252" r="102" fill="#C56B74" opacity=".07"/>
-  <rect x="76" y="132" width="168" height="236" rx="32" fill="rgba(255,255,255,.44)" stroke="#C56B74" stroke-width="1.5" opacity=".74"/>
-  <g opacity="0.95"><path d="M130 274L146 226" stroke="#C56B74" stroke-width="5" stroke-linecap="round"/><circle cx="148" cy="224" r="5" fill="#F8DFA7"/></g>
-<g opacity="0.95"><path d="M174 274L190 226" stroke="#C56B74" stroke-width="5" stroke-linecap="round"/><circle cx="192" cy="224" r="5" fill="#F8DFA7"/></g>
-  
-  <text x="160" y="398" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">互动 · 平衡</text>
-  <text x="160" y="448" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#C56B74">小阿卡那</text>
-  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">行动选择</text>
+  <clipPath id="win"><rect x="46" y="100" width="228" height="256" rx="18"/></clipPath>
+  <g clip-path="url(#win)">
+    <rect x="46" y="100" width="228" height="256" fill="url(#sky)"/>
+    <circle cx="160" cy="112" r="150" fill="#C56B74" opacity=".05"/><path d="M46 296 L96 250 L138 284 L190 240 L244 288 L274 296 Z" fill="#c7bda0" opacity="0.3"/><rect x="46" y="296" width="228" height="60" fill="#d9c7a0" opacity="0.45"/><g><line x1="160" y1="145.2" x2="160" y2="190.8" stroke="#C56B74" stroke-width="3.8" stroke-linecap="round"/>
+      <circle cx="160" cy="145.2" r="2.8499999999999996" fill="#7fae6f"/>
+      <path d="M160 158.5 q7.6 -3.8 9.5 3.8" fill="none" stroke="#7fae6f" stroke-width="1.9"/>
+      <path d="M160 171.8 q-7.6 -3.8 -9.5 3.8" fill="none" stroke="#7fae6f" stroke-width="1.9"/></g><g><line x1="160" y1="265.2" x2="160" y2="310.8" stroke="#C56B74" stroke-width="3.8" stroke-linecap="round"/>
+      <circle cx="160" cy="265.2" r="2.8499999999999996" fill="#7fae6f"/>
+      <path d="M160 278.5 q7.6 -3.8 9.5 3.8" fill="none" stroke="#7fae6f" stroke-width="1.9"/>
+      <path d="M160 291.8 q-7.6 -3.8 -9.5 3.8" fill="none" stroke="#7fae6f" stroke-width="1.9"/></g></g><rect x="46" y="100" width="228" height="256" rx="18" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.5"/>
+  <text x="160" y="402" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#6A5F77">规划远景 · 握有选择</text>
+  <text x="160" y="446" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="#C56B74">小阿卡那</text>
+  <text x="160" y="474" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#5C5368">放眼未来</text>
   <defs>
     <linearGradient id="paper" x1="22" y1="18" x2="302" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFFDF8"/>
-      <stop offset=".52" stop-color="#F8EEF7"/>
-      <stop offset="1" stop-color="#EAF4FF"/>
+      <stop stop-color="#FFFDF8"/><stop offset=".52" stop-color="#F8EEF7"/><stop offset="1" stop-color="#EAF4FF"/>
     </linearGradient>
     <linearGradient id="edge" x1="14" y1="10" x2="310" y2="510" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF8E8"/>
-      <stop offset=".5" stop-color="#F8DFA7"/>
-      <stop offset="1" stop-color="#C56B74"/>
+      <stop stop-color="#FFF8E8"/><stop offset=".5" stop-color="#F8DFA7"/><stop offset="1" stop-color="#C56B74"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="100" x2="0" y2="356" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF6FF"/><stop offset="1" stop-color="#EAF1FF"/>
     </linearGradient>
   </defs>
 </svg>

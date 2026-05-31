@@ -458,9 +458,23 @@ async function fetchReading() {
   }
 }
 
+const ELEMENT_COLORS = {
+  火: "#ff8a5c",
+  水: "#5cc8ff",
+  风: "#d9c7ff",
+  土: "#9bd6a3"
+};
+
 function nextRevealIndex() {
   if (!state.revealed?.length) return 0;
   return state.revealed.findIndex((open) => !open);
+}
+
+/** 翻牌瞬间的「牌师低语」：取该牌位的真实解读，去掉重复的位置·牌名前缀 */
+function cardWhisper(index) {
+  const pr = state.reading?.summary?.aiCompact?.positionReadings?.[index];
+  const raw = pr?.text || state.reading?.cards?.[index]?.shortHint || "";
+  return String(raw).replace(/^[^：:]{1,16}[：:]\s*/, "").trim();
 }
 
 function updateRevealGuide(wrap) {
@@ -500,13 +514,27 @@ function flipRevealCard({ index, card, el, slot, wrap, reportButton, isMajor, is
     el.classList.remove("is-flipping");
     const allOpen = state.revealed.every(Boolean);
     reportButton.disabled = !allOpen;
+
+    const whisperEl = wrap.querySelector("[data-whisper]");
+    if (whisperEl) {
+      const line = cardWhisper(index);
+      if (line) {
+        whisperEl.textContent = `牌师低语 · ${card.position}：${line}`;
+        whisperEl.classList.remove("show");
+        void whisperEl.offsetWidth;
+        whisperEl.classList.add("show");
+      }
+    }
+    const glow = wrap.querySelector(".reveal-table-glow");
+    const elemColor = ELEMENT_COLORS[card.element];
+    if (glow && elemColor) glow.style.setProperty("--glow-elem", elemColor);
     if (isMajor) {
       el.classList.add("burst");
       slot.classList.add("slot-burst");
       toast("✦ 大阿卡那降临 — 能量格外清晰");
       buzz([10, 30, 12]);
     } else if (isReversed) {
-      toast("逆位是温柔提醒，不是坏预兆");
+      toast("逆位：能量尚未顺畅，请结合牌意阅读");
       buzz(6);
     } else {
       buzz(8);
@@ -560,6 +588,7 @@ function renderReveal() {
       <div class="reveal-table-glow" aria-hidden="true"></div>
       <div class="reading-cards reveal-deck reveal-deck--${spreadId}"></div>
       <p class="reveal-table-hint">轻触尚未翻开的牌背</p>
+      <p class="reveal-whisper" data-whisper aria-live="polite"></p>
     </div>
     <div class="actions reveal-actions">
       <button class="btn secondary" data-redraw>同题再抽</button>
@@ -601,6 +630,8 @@ function renderReveal() {
       isMajor ? "is-major" : "",
       isReversed ? "is-reversed" : ""
     ].filter(Boolean).join(" ");
+    const elemColor = ELEMENT_COLORS[card.element];
+    if (elemColor) el.style.setProperty("--elem-color", elemColor);
     el.setAttribute("aria-label", `${card.position}，${state.revealed[index] ? "已翻开" : "点击翻开"}`);
     el.innerHTML = `
       <div class="tarot-inner">
@@ -613,7 +644,9 @@ function renderReveal() {
           <img class="card-image" src="${card.image}" alt="${card.name} ${card.nameEn} 卡面图" draggable="false">
           <h3 class="card-name">${escapeHtml(card.name)}</h3>
           <div class="orientation">${escapeHtml(card.orientation)}</div>
+          ${card.element || card.numerologyStage ? `<div class="card-basis-tags">${card.element ? `<span class="card-basis-tag">${escapeHtml(card.element)}元素</span>` : ""}${card.numerologyStage ? `<span class="card-basis-tag">${escapeHtml(card.numerologyStage)}</span>` : ""}</div>` : ""}
           <p class="card-hint">${escapeHtml(card.shortHint)}</p>
+          ${card.imagery ? `<p class="card-imagery">✦ ${escapeHtml(card.imagery)}</p>` : ""}
         </div>
       </div>
     `;
@@ -820,6 +853,35 @@ function renderVisualJourney(reading, { compact = false } = {}) {
   `;
 }
 
+function renderSpreadValenceChips(reading) {
+  const labels = reading.summary?.aiCompact?.spreadTone?.labels
+    || (reading.cards || []).map((card) => ({
+      position: card.position,
+      name: card.name,
+      valence: inferCardValenceLabel(card)
+    }));
+  if (!labels.length) return "";
+  const text = labels.map((item) => `${item.position}${item.valence}`).join(" · ");
+  return renderVisualChip("牌阵基调", text);
+}
+
+function inferCardValenceLabel(card) {
+  const keys = (card.keywords || []).join("");
+  const challenge =
+    /崩|破|冲突|恐惧|失败|损失|消耗|束缚|延迟|受阻|拖延|结束|打破|恶魔|高塔|宝剑九|宝剑十|圣杯五|权杖十|星币五|月亮|坏消息|算计|封闭|悲伤|内耗|失衡|轻率|操控|抗拒|诱惑|混乱|不公|疲惫|压力/.test(
+      keys
+    )
+    || /高塔|恶魔|宝剑九|宝剑十|圣杯五|权杖十|星币五|月亮/.test(card.name || "");
+  const support =
+    /希望|疗愈|完成|明朗|喜悦|丰盛|吸引|和谐|整合|重生|转机|资源|清晰|平衡|勇气|缓和|减压|解脱|改善|复苏|走出|回流/.test(
+      keys
+    )
+    || /太阳|星星|世界/.test(card.name || "");
+  if (challenge && !support) return "挑战";
+  if (support && !challenge) return "支持";
+  return "中性";
+}
+
 function renderVisualChip(label, value) {
   if (!value) return "";
   return `
@@ -870,6 +932,11 @@ function renderVisualPositionCards(reading, sections) {
       `
       : `<div class="visual-position__media is-placeholder"><span>✦</span></div>`;
 
+    const basis = card
+      ? [card.element ? `${card.element}元素` : "", card.numerologyStage || "", card.imagery || ""]
+          .filter(Boolean)
+          .join(" · ")
+      : "";
     return `
       <article class="visual-position">
         ${media}
@@ -879,6 +946,7 @@ function renderVisualPositionCards(reading, sections) {
             <span class="visual-position__name">${escapeHtml(name || card?.name || "")}</span>
           </p>
           <div class="visual-position__text">${formatSectionText(section.text)}</div>
+          ${basis ? `<p class="visual-position__basis"><span>牌理依据</span>${escapeHtml(basis)}</p>` : ""}
         </div>
       </article>
     `;
@@ -920,6 +988,7 @@ function renderVisualSummary(reading) {
         ${renderVisualChip("心情", moodLabel(reading.mood))}
         ${renderVisualChip("主题", reading.themeLabel)}
         ${renderVisualChip("关键词", reading.summary?.keyword)}
+        ${renderSpreadValenceChips(reading)}
       </div>
       <div class="visual-summary__grid">
         ${organized.briefSummary ? renderVisualModule({

@@ -1,3 +1,11 @@
+import {
+  contextualValence,
+  valenceLabel,
+  describeCardWhy,
+  composePositionReading,
+  getCardKnowledge
+} from "./tarot-knowledge.js";
+
 const DEFAULT_BASE = "https://www.dmxapi.com";
 const DEFAULT_MODEL = "deepseek-v4-flash";
 
@@ -56,11 +64,71 @@ function cardByPosition(cards, ...positions) {
   return cards.find((card) => positions.includes(card.position));
 }
 
+/**
+ * 情绪极性：委托给知识库的「牌位 × 问题 × 牌义（数字/元素/正逆）」推理（建议3）。
+ * 不再用牌名 includes 硬编码。profile 可选，缺省时仅按牌位+数字+正逆推断。
+ */
+function cardValence(card, profile = {}) {
+  return contextualValence(card, profile);
+}
+
+function cardValenceLabel(card, profile = {}) {
+  return valenceLabel(contextualValence(card, profile));
+}
+
+function activeCardMeaning(card, profile = {}) {
+  const keys = (card.keywords || []).slice(0, 3);
+  const kw = keys.join("、") || "—";
+  const orient = card.orientation === "逆位" ? "逆位" : "正位";
+  let line = `${orient}关键词：${kw}；基调：${cardValenceLabel(card, profile)}`;
+  const why = describeCardWhy(card, profile);
+  if (why) line += `；牌理依据：${why}`;
+  if (card.actionHint) {
+    line += `；课题：${String(card.actionHint).replace(/[。.!！]$/, "")}`;
+  }
+  return line;
+}
+
+function spreadHonestyHint(reading) {
+  const cards = reading.cards || [];
+  if (!cards.length) return "";
+  const profile = reading.questionProfile || {};
+  const chain = cards.map((c) => `${c.position}·${c.name}(${cardValenceLabel(c, profile)})`).join(" → ");
+  const challengeCount = cards.filter((c) => cardValence(c, profile) === "challenge").length;
+  return `【牌阵基调 · 必守】${chain}。挑战牌 ${challengeCount} 张。
+- 挑战牌：必须点出具体卡点（用关键词），禁止只说「耐心/在路上/别慌/会好的」。
+- 支持牌：写实写出助力，禁止空夸。
+- 中性牌：写观察与待核实项。
+- 每张 positionReadings：结构「如实一句 + 温柔一句」；禁止只报喜，也禁止定命恐吓。`;
+}
+
+function soundsOverlyPositive(text) {
+  const body = String(text || "");
+  return (
+    /在路上|别慌|会好|耐心等|好事多|给你出口|仍在给你|别急着否定|慢慢会|熬过/.test(body)
+    && !/卡|阻|拖|耗|冲突|延迟|冷淡|失衡|损失|结束|崩|束缚|犹豫|代价|风险|阻滞|观望|不确定|消耗|拉扯|内耗|反复|失衡|债务|算计|封闭|悲伤|恐惧|失败|轻率|操控|拖延|抗拒|诱惑|混乱|不公|内耗|退让|缓和/.test(
+      body
+    )
+  );
+}
+
 function orientTone(card) {
   if (!card) return "";
+  const k0 = card.keywords?.[0] || "信号";
+  const valence = cardValence(card);
+  if (valence === "challenge") {
+    return card.orientation === "逆位"
+      ? `偏${k0}，且表达/推进都不稳定`
+      : `${k0}较明显，局面不算轻松`;
+  }
+  if (valence === "support") {
+    return card.orientation === "逆位"
+      ? `有${k0}，但还没完全落地`
+      : `有${k0}、${card.keywords[1] || k0}的倾向`;
+  }
   return card.orientation === "逆位"
-    ? `偏${card.keywords[0]}，但表达不稳定或未说透`
-    : `有${card.keywords[0]}、${card.keywords[1] || card.keywords[0]}的倾向`;
+    ? `在${k0}上仍有拉扯，还没说透`
+    : `围绕${k0}在展开，仍需观察`;
 }
 
 /** 本地回退：先回答用户字面问题，再用牌佐证 */
@@ -173,14 +241,32 @@ function questionSignals(reading) {
   const p = reading.questionProfile || {};
   const q = String(reading.question || p.text || "");
   return {
-    asksOffer: /offer|录用|入职|跳槽|离职/i.test(q),
+    asksOffer: isCareerQuestion(reading),
     asksWhenWhere: /什么时候|何时|多久|几月|几周|时间|哪里|什么地方|在哪|哪座|城市/.test(q),
     asksOtherFeeling: p.isRelationship && /他|她|对方|ta/i.test(q) && /感觉|喜欢|爱|态度|怎么想|在意/.test(q),
     asksShouldIDo: p.isDecision || /该不该|要不要|是否|继续|放弃|离开|主动/.test(q),
-    asksFuture: p.isFuture || /未来|会不会|能不能|结果|发展/.test(q),
+    asksFuture: p.isFuture || reading.theme === "future" || /未来|会不会|能不能|结果|发展/.test(q),
     asksEmotion: p.isEmotion || /累|焦虑|难过|情绪|疲惫|压力/.test(q),
     choice: detectChoiceOptions(q)
   };
+}
+
+/**
+ * 是否职业/offer 语境（建议5）：优先信任已升级的意图判定 profile.isCareer，
+ * 仅当缺少 profile 时才回退到关键词，避免未来主题误触 offer 套话。
+ */
+function isCareerQuestion(reading) {
+  const p = reading.questionProfile || {};
+  if (typeof p.isCareer === "boolean") {
+    // 主题为未来/关系/情绪/自我时，profile.isCareer 已由加权判定排除误触
+    return p.isCareer;
+  }
+  const q = String(reading.question || p.text || "");
+  return /offer|录用|入职|跳槽|离职|面试|等消息|等结果|等回复|没消息|通知|HR|笔试|岗位|找工作|求职|工作|职业|事业/i.test(q);
+}
+
+function pentaclesCardCount(cards) {
+  return (cards || []).filter((c) => c.suitKey === "pentacles" || c.name.includes("星币")).length;
 }
 
 function userAnswerPlaybook(reading) {
@@ -192,8 +278,16 @@ function userAnswerPlaybook(reading) {
   lines.push(`【用户原话】「${q}」`);
   lines.push(`【接住 → 答问 → 贴牌】写作顺序：①先接住用户此刻感受（呼应【此刻心情】）②回应字面问题 ③用对应牌位牌意佐证。禁止只讲牌、禁止只安慰不答问。`);
 
-  if (sig.asksOffer || (p.isCareer && /工作|职业|面试|岗位/.test(q))) {
-    lines.push(`【职业 / offer】用户要的是「机会节奏 + 落地感」，不是空泛鼓励。`);
+  if (sig.asksFuture && !isCareerQuestion(reading)) {
+    lines.push(`【未来与选择】必须写三牌因果故事（现状→阻碍→建议），解释每张牌对用户问题的含义；禁止 offer/评估窗/录用等职业套话，除非用户明确问工作。`);
+    lines.push(`【权威读牌】引用花色领域（星币=现实/价值/交换，圣杯=情感，权杖=行动，宝剑=判断）+ 牌意核心，禁止只贴关键词。`);
+  }
+
+  if (isCareerQuestion(reading)) {
+    lines.push(`【职业 / offer / 等消息】用户要的是「流程节奏 + 内心是否被结果绑太紧」，不是空泛鼓励。`);
+    if (/等消息|等结果|没消息|面试/.test(q)) {
+      lines.push(`【等消息】写清更像面试后评估窗；区分「对方流程节奏」与「自己对结果的执念」；不说具体日期、不保证录用。`);
+    }
     if (sig.asksWhenWhere) {
       lines.push(`【时间】用流程阶段作答（如：尚在积累/窗口接近/需再观望 1–2 个周期），依据【现状】与【阻碍】牌，不说具体日期、不保证成败。`);
       lines.push(`【地点】若问题含城市或地域，在 innerTension 或【建议】牌解读里，分别写两选项各提醒核对什么（生活成本、团队氛围、归属感等），可用「略偏向…的质感，但仍需核实」`);
@@ -236,93 +330,29 @@ function interpretCardLine(card, reading) {
   const name = card.name;
   const q = reading.question || "";
 
-  if (name.includes("圣杯八")) {
-    return rev
-      ? `也许你想离开旧状态却还没迈出去，${name}逆位让「何时何地」暂时卡住`
-      : `也许你已经准备转向新阶段，${name}正位提示离开的节奏正在启动`;
-  }
-  if (name.includes("星币十")) {
-    return rev
-      ? `也许长期稳定（城市、户口、家庭期待）还在晃动，${name}逆位拖慢了落地感`
-      : `也许现实保障正在对齐，${name}正位指向可落地的稳定结构`;
-  }
-  if (name.includes("圣杯六")) {
-    return rev
-      ? `也许怀旧与旧安全感在拉扯你，${name}逆位提醒别只凭记忆选城`
-      : `也许答案在「哪里更让你安心」，${name}正位邀请先修复归属感`;
-  }
-  if (name.includes("星币七")) {
-    return rev
-      ? `也许评估期被拉长，${name}逆位提示别在焦虑里催结果`
-      : `也许仍在等收成，${name}正位与${k[0] || "评估"}有关`;
-  }
-  if (name.includes("宝剑九")) {
-    return `也许夜间担心放大了不确定，${name}邀请你先区分事实与想象`;
+  // —— 仅保留「真正依赖语境」的覆盖；其余统一走知识库推理 ——
+
+  // 关系问对方心意：牌义要落到「倾向 + 需互动验证」，不替对方定论
+  if (sig.asksOtherFeeling && ["现状", "对方或外界"].includes(card.position)) {
+    return cardValence(card, p) === "support"
+      ? `就ta的心意，${name}${rev ? "逆" : "正"}位透出${k[0] || "一点温度"}，但还需要真实互动来验证。`
+      : `就ta的心意，${name}${rev ? "逆" : "正"}位看${k[0] || "偏淡或未定型"}，别只靠猜测补全画面。`;
   }
 
+  // 二选一/城市题：把牌意落到「核对哪边」
   if (sig.choice && (q.includes("深圳") || q.includes("上海"))) {
     if (card.position === "阻碍" && card.suitKey === "pentacles") {
       return rev
-        ? `也许两城比较时，现实门槛（生活成本、稳定感）被放大，${name}逆位是卡点`
-        : `也许${name}在提醒你核对哪边更能给你长期稳定`;
+        ? `两城比较时，现实门槛（生活成本、稳定感）被放大，${name}逆位是卡点`
+        : `${name}在提醒你核对哪边更能给你长期稳定`;
     }
     if (card.position === "建议" && card.suitKey === "cups") {
-      return `也许先问哪座城市更让你安心，${name}比急着定时间更重要`;
+      return `先问哪座城市更让你安心，${name}比急着定时间更重要`;
     }
   }
 
-  if (card.position === "现状") {
-    if (sig.asksOffer || (p.isCareer && /offer|工作|职业/.test(reading.question || ""))) {
-      return rev
-        ? `也许你对新机会还在观望，${name}提示先盘点已投入与真正想要的回报`
-        : `可能正处在「等收成、做评估」的阶段，${name}与${k[0] || "现实"}有关`;
-    }
-    if (sig.asksOtherFeeling) {
-      return rev
-        ? `也许关系里仍有${k[0] || "波动"}，${name}提示别只靠猜测读对方`
-        : `可能对方心意有${k[0] || "温度"}，但还需要时间看清`;
-    }
-    return `也许当下核心是${k[0] || "看清自己"}，${name}在描述你此刻站的位置`;
-  }
-
-  if (card.position === "阻碍") {
-    if (sig.asksOffer) {
-      return rev
-        ? `也许卡点不在「有没有机会」，而是对新起点还缺一点踏实感`
-        : `可能新机会已在眼前，真正挡住你的是敢不敢接下这份「新土」`;
-    }
-    return rev
-      ? `也许阻力来自${k[0] || "犹豫"}未说透，${name}在提醒你放慢`
-      : `可能${k[0] || "现实因素"}正是眼下需要先面对的部分`;
-  }
-
-  if (card.position === "建议") {
-    if (sig.asksEmotion || name.includes("宝剑九")) {
-      return `也许先把脑内最坏设想放轻，${name}邀请你区分事实与担心`;
-    }
-    if (sig.asksOffer || p.isCareer) {
-      return `也许不必今天拍板，先让${k[0] || "判断"}在清醒时完成`;
-    }
-    return `也许可以试着朝${k[0] || "更清楚"}迈一小步，${name}支持温柔推进`;
-  }
-
-  if (card.position === "今日指引") {
-    return `也许今天只需守住${k[0] || "节奏"}，${name}在陪你回到当下`;
-  }
-
-  if (card.position === "对方或外界") {
-    return `也许外界环境有${k[0] || "变量"}，${name}提示你把目光放在真实互动上`;
-  }
-
-  if (card.position === "隐藏因素") {
-    return `也许还有${k[0] || "未说清"}在影响你，${name}提醒你看见全貌`;
-  }
-
-  if (card.position === "下一步") {
-    return `也许下一步不必很大，${name}与${k[0] || "小步"}有关`;
-  }
-
-  return `也许${name}在提醒你留意${k[0] || "感受"}与${k[1] || "节奏"}`;
+  // 默认：知识库合成（意象 + 元素 + 数字 + 牌位透镜 + 正逆），建议3/4 的主干
+  return composePositionReading(card, p);
 }
 
 function questionFocusHint(reading) {
@@ -343,48 +373,175 @@ function questionFocusHint(reading) {
     lines.push(`【牌位顺序】${positions}。reminders 共 ${Math.min(reading.cards.length, 3)} 条，严格按此顺序，每条对应一张牌，句式不可雷同。`);
   }
 
-  lines.push(`【模块绑牌 · 必守 · 去重复】
+  lines.push(`【模块绑牌 · 必守 · 去重复 · 如实】
 各模块分工不同，禁止把同一段话换个标题重复粘贴：
-- briefSummary：全篇唯一浓缩（口语，45-60字），先接住再问句，直接给结论。
-- presentState：只写「感受+一句结论」（≤55字），不写牌名、不展开牌意（细节留给 positionReadings）。
-- innerTheme：一句故事线（≤40字），不重复 briefSummary。
-- reminders：可写 2-3 条便签（每条≤18字），只点关键词；若与逐张解读重复则省略该条。
-- positionReadings：唯一允许详细解牌的地方（每张 50-68 字）。
-- innerTension：只写心理拉扯（≤48字），不复述牌面。
-- closingLine：短收束（≤32字），禁止重复 gentleActions 或 briefSummary。
-- 口语化：像深夜语音跟朋友说，少用「暗示/迹象/投入度/疏离」等报告腔。`);
+- briefSummary：全篇唯一浓缩（45-80字）。结构：半句接住 + 半句直接结论（可含挑战/中性，禁止空泛「会好的/在路上」）+ 可选半句温柔收尾。
+- presentState：感受 + 一句结论（≤55字），不写牌名；结论须与牌阵基调一致（有挑战牌时不得只报喜）。
+- innerTheme：三牌因果链一句（≤56字），把现状→阻碍→建议串成同一主线、并让建议回扣现状那股劲，可含阻力词，不重复 briefSummary。
+- reminders：2-3 条便签（每条≤18字），用关键词；挑战牌可写「阻滞/消耗/延迟」类词。
+- positionReadings：唯一详细解牌处（50-68字）；挑战牌写清卡点，支持牌写清助力；结构「如实 + 温柔」。
+- innerTension：心理拉扯（≤48字），可承认担心合理，不复述牌面。
+- closingLine：短收束（≤32字）；可温暖，但不得否定前文已点出的挑战。
+- 口语化：像深夜语音，少用「暗示/迹象/投入度/疏离」等报告腔。`);
+  lines.push(spreadHonestyHint(reading));
   lines.push(spreadSynthesisHint(reading));
   return lines.join("\n");
 }
 
+function pickSpreadHeadline(reading) {
+  const block = cardByPosition(reading.cards, "阻碍", "隐藏因素");
+  const now = cardByPosition(reading.cards, "现状", "今日指引", "我") || reading.cards?.[0];
+  const advice = cardByPosition(reading.cards, "建议", "下一步");
+  const sig = questionSignals(reading);
+
+  if (block && block.name.includes("恶魔")) {
+    return block.orientation === "逆位" ? "执念在松动" : "先看见执念";
+  }
+
+  if (block && cardValence(block) === "challenge") {
+    const bk = block.keywords?.[0] || "";
+    if (/过度付出|自我忽略|消耗|束缚|内耗|冲突|延迟|阻滞|恐惧|失衡/.test(bk)) {
+      return bk.length <= 12 ? `先处理${bk}` : "先看清主要卡点";
+    }
+    if (bk && bk.length <= 12) return bk;
+    return "先正视阻力";
+  }
+
+  if (sig.asksOffer) return "offer还在评估期";
+
+  const candidates = [
+    advice?.keywords?.[0],
+    now?.keywords?.[0],
+    block?.keywords?.[0]
+  ].filter(Boolean);
+
+  for (const item of candidates) {
+    if (item.length >= 4 && item.length <= 12) return item;
+  }
+
+  for (const item of candidates) {
+    if (!item) continue;
+    const short = clampAtSentence(item, 12).replace(/…$/g, "");
+    if (short.length >= 4) return short;
+  }
+
+  return "星月陪你慢慢看清";
+}
+
+function stripCardNamePrefix(bridge, card) {
+  const text = String(bridge || "");
+  const escaped = card.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text
+    .replace(new RegExp(`^${escaped}(（${card.orientation}）|${card.orientation}|正位|逆位)?[：:]\\s*`, "g"), "")
+    .trim();
+}
+
+const STALE_POSITION_PATTERNS =
+  /别用焦虑代替事实|处在.+阶段|卡点常在摆脱束缚|认清现实宜慢，别在焦虑里催结果|浪漫追求阶段|处在浪漫追求|offer 侧|是当前主要阻力|宜慢，别在焦虑|被拉长，offer|仍在评估\/等待窗|是当前主要阻力|指向.+，是你此刻站的位置$/;
+
+function normalizePositionBody(raw, card, reading) {
+  let body = stripCardNamePrefix(sanitizeCopy(raw), card);
+  let prev = "";
+  while (body !== prev) {
+    prev = body;
+    body = stripCardNamePrefix(body, card);
+  }
+  const posPrefix = new RegExp(`^${card.position}[·•][^：:]{0,24}[：:]\\s*`);
+  body = stripCardNamePrefix(body.replace(posPrefix, "").trim(), card);
+
+  const stale =
+    STALE_POSITION_PATTERNS.test(String(raw || ""))
+    || STALE_POSITION_PATTERNS.test(body)
+    || aiSummaryWrongFraming(body, reading);
+  if (
+    stale
+    || isWeakLine(body)
+    || !body
+    || orientationMismatch(body, card)
+    || (cardValence(card) === "challenge" && soundsOverlyPositive(body))
+    || new RegExp(`^${card.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(body)
+  ) {
+    body = stripCardNamePrefix(interpretCardLine(card, reading), card);
+  }
+  return body;
+}
+
+const POSITION_READING_MAX = 92;
+
 function buildPositionReading(card, reading) {
-  const bridge = interpretCardLine(card, reading);
-  return clampAtSentence(`${card.position}·${cardLabel(card)}：${bridge}`, 68);
+  const bridge = stripCardNamePrefix(interpretCardLine(card, reading), card);
+  return clampSentenceClean(`${card.position}·${cardLabel(card)}：${bridge}`, POSITION_READING_MAX);
 }
 
 function groundPresentState(reading) {
   const sig = questionSignals(reading);
   const embrace = (moodEmbraceLines[reading.mood] || "我懂你在意。").replace(/。$/, "");
+  const now = cardByPosition(reading.cards, "现状", "今日指引", "我") || reading.cards?.[0];
+  const k0 = now?.keywords?.[0];
+  const valence = cardValence(now);
+
   if (sig.asksOtherFeeling) {
-    return `${embrace}。就ta的心意，牌看暂时偏淡，先别自己吓自己。`;
+    if (valence === "challenge") {
+      return `${embrace}。就ta的心意，牌看偏淡${k0 ? `，${k0}是信号` : ""}，别靠猜。`;
+    }
+    if (valence === "support") {
+      return `${embrace}。牌看有温度${k0 ? `（${k0}）` : ""}，但还没到定论。`;
+    }
+    return `${embrace}。心意还在辨认期，先看清互动再下结论。`;
   }
   if (sig.asksOffer && sig.asksWhenWhere) {
-    return `${embrace}。offer何时何地，牌看还在路上，别急着自己吓自己。`;
+    if (valence === "challenge") {
+      return `${embrace}。offer 何时何地仍不明，${k0 || "流程"}上有阻滞要先核实。`;
+    }
+    return `${embrace}。时间地点还在评估窗，先把事实和担心分开。`;
   }
   if (sig.asksOffer) {
-    return `${embrace}。工作上还在观望期，先把事实和担心分开。`;
+    if (valence === "challenge") {
+      return `${embrace}。工作上${k0 || "仍有卡点"}，别在焦虑里催结果。`;
+    }
+    return `${embrace}。仍在观望/评估期，分清事实和担心。`;
   }
   if (sig.choice) {
-    return `${embrace}。两边都还在看，今天不必硬选。`;
+    return `${embrace}。两边都还有${k0 || "变量"}，今天不必硬选。`;
   }
-  return `${embrace}。牌在陪你慢慢看清，不必今天就想通。`;
+  if (sig.asksFuture && !isCareerQuestion(reading)) {
+    if (valence === "challenge") {
+      return `${embrace}。牌先看${k0 || "现实卡点"}，别在「值不值」里反复耗。`;
+    }
+    return `${embrace}。未来还在展开，先把标准与需要分开想。`;
+  }
+  return `${embrace}。牌在帮你看清局面，不必今天就想通。`;
+}
+
+/** 取一张牌「此刻最贴切的那个面」：正位取光明面、逆位取阴影面的首词 */
+function cardFacetWord(card) {
+  if (!card) return "";
+  const rev = card.orientation === "逆位";
+  const words = rev ? card.reversed || [] : card.upright || [];
+  return words[0] || card.keywords?.[0] || "";
 }
 
 function groundInnerTheme(reading) {
   const cards = reading.cards || [];
-  if (cards.length < 2) return "牌在陪你辨认当下最重要的一件事。";
-  const advice = cards.at(-1);
-  return clampAtSentence(`前面有点卡，但${advice?.name || "建议牌"}仍在给你出口。`, 42);
+  if (cards.length < 2) return "牌在帮你辨认当下真正要紧的那一件事。";
+  const now = cardByPosition(cards, "现状", "今日指引", "我") || cards[0];
+  const block = cardByPosition(cards, "阻碍", "隐藏因素") || cards[1];
+  const advice = cardByPosition(cards, "建议", "下一步") || cards.at(-1);
+  const nk = cardFacetWord(now) || "起点";
+  const bk = cardFacetWord(block) || "阻力";
+
+  // 三张串成一条因果链，并让「建议」回扣到「现状」那股劲——同一主线闭环
+  if (pentaclesCardCount(cards) >= 2) {
+    return clampAtSentence(
+      `从${now.name}的「${nk}」起，被${block.name}的「${bk}」拖住，到${advice?.name || "建议"}其实绕回同一件事：先把滋养放回自己身上。`,
+      58
+    );
+  }
+
+  return clampAtSentence(
+    `从${now.name}的「${nk}」出发，卡在${block.name}的「${bk}」上，而真正的出口，是回到开头这股劲，在${advice?.name || "建议"}里把它收成一个动作。`,
+    58
+  );
 }
 
 function groundInnerTension(reading) {
@@ -395,11 +552,17 @@ function groundInnerTension(reading) {
   if (sig.asksOffer) {
     return "你想快点有结果，又怕选错——这份慎重挺珍贵。";
   }
+  if (sig.asksFuture && !isCareerQuestion(reading)) {
+    return "你想尽快看清方向，又怕一旦选错就回不了头——这很正常。";
+  }
   return "你想看清答案，又怕一旦投入就难以回头——这很正常。";
 }
 
 function groundClosingLine(reading) {
   const sig = questionSignals(reading);
+  if (sig.asksOffer) {
+    return "先核对条件，再谈时机。";
+  }
   if (sig.choice) {
     return "先安顿好自己，城市和时间都会慢慢清楚。";
   }
@@ -407,26 +570,7 @@ function groundClosingLine(reading) {
 }
 
 function groundHeadline(reading) {
-  const advice = cardByPosition(reading.cards, "建议", "下一步");
-  const now = cardByPosition(reading.cards, "现状", "今日指引", "我") || reading.cards?.[0];
-  if (advice?.actionHint) {
-    const hint = advice.actionHint.replace(/[。.!！]/g, "");
-    if (hint.length >= 4 && hint.length <= 12) return hint;
-    return hint.slice(0, 12);
-  }
-  const gentle = {
-    犹豫: "在转弯处稍作停顿",
-    焦虑: "先安放心里的不安",
-    等待: "给答案一点生长时间",
-    离开: "允许自己慢慢转向",
-    怀旧: "带着温柔走向新阶段"
-  };
-  const k0 = now?.keywords?.[0] || "";
-  for (const [key, title] of Object.entries(gentle)) {
-    if (k0.includes(key)) return title;
-  }
-  if (now?.name) return `在${now.name}里找回节奏`.slice(0, 12);
-  return "星月陪你慢慢看清";
+  return pickSpreadHeadline(reading);
 }
 
 const BANNED_PHRASES = [
@@ -484,6 +628,36 @@ function clampAtSentence(text, max) {
   return `${slice.trim()}…`;
 }
 
+/**
+ * 逐张解读专用截断：优先在完整句号（。！？）处收尾，宁可短一句，
+ * 也不要留「…」半截。只有当全文没有任何句末标点时才退回 clampAtSentence。
+ */
+function clampSentenceClean(text, max) {
+  const raw = String(text || "").trim();
+  if (raw.length <= max) return raw.replace(/[，,、；;]\s*$/, "");
+  const slice = raw.slice(0, max);
+  const lastEnd = Math.max(
+    slice.lastIndexOf("。"),
+    slice.lastIndexOf("！"),
+    slice.lastIndexOf("？")
+  );
+  if (lastEnd >= Math.floor(max * 0.4)) {
+    return slice.slice(0, lastEnd + 1);
+  }
+  // 没有合适的整句边界，退回逗号截断（仍会带…，但这是少数情况）
+  return clampAtSentence(raw, max);
+}
+
+function isTruncatedHeadline(headline, reading) {
+  const h = String(headline || "");
+  if (/关系能$|改变关系能$|也会改变关系/.test(h)) return true;
+  for (const card of reading.cards || []) {
+    const hint = String(card.actionHint || "");
+    if (hint.length > h.length && hint.startsWith(h)) return true;
+  }
+  return false;
+}
+
 function normalizeHeadline(text, reading, fallback) {
   let headline = String(text || "").trim().replace(/[。.!！?？…]+$/g, "");
   const openQuotes = (headline.match(/[「『]/g) || []).length;
@@ -492,7 +666,8 @@ function normalizeHeadline(text, reading, fallback) {
     !headline
     || headline.length > 12
     || openQuotes !== closeQuotes
-    || isColdHeadline(headline);
+    || isColdHeadline(headline)
+    || isTruncatedHeadline(headline, reading);
   if (broken) {
     return groundHeadline(reading) || fallback.headline;
   }
@@ -519,17 +694,37 @@ function cardLabel(card) {
   return `${card.name}（${card.orientation}）`;
 }
 
-function formatCardForPrompt(card) {
+function formatCardForPrompt(card, profile = {}) {
   const orient = card.orientation === "逆位" ? "逆位" : "正位";
-  const essence = card.girlToneMeaning || card.actionHint || "";
+  const k = getCardKnowledge(card);
   const lines = [
     `【${card.position}】${card.name}（${orient}）`,
-    `关键词：${(card.keywords || []).join("、")}`,
-    `花色：${card.suit || ""}${card.element ? `·${card.element}` : ""}`,
-    `牌意精华：${essence}`,
-    `行动提示：${card.actionHint || "—"}`
+    activeCardMeaning(card, profile)
   ];
+  if (k?.element && k?.elementProfile) {
+    lines.push(`元素：${k.element}（主${k.elementProfile.domain}）`);
+  }
+  if (k?.imagery) {
+    lines.push(`牌面意象：${k.imagery}`);
+  }
+  const lens = positionLensHint(card.position);
+  if (lens) lines.push(`牌位透镜（${card.position}）：${lens}`);
+  lines.push(`行动提示：${card.actionHint || "—"}`);
   return lines.join("\n");
+}
+
+function positionLensHint(position) {
+  const map = {
+    现状: "描述此刻真实站位，不评判好坏",
+    阻碍: "正视它如何拖住你；好牌落此处常是「过度依赖」",
+    建议: "给可落地的姿态，不保证结果",
+    对方或外界: "外部/对方状态，需互动验证，不替对方定论",
+    隐藏因素: "尚未被看见却在影响判断的暗流",
+    下一步: "更可能展开的动作节奏",
+    今日指引: "今天值得守住的一件小事",
+    我: "你自身的状态与课题"
+  };
+  return map[position] || "";
 }
 
 function spreadSynthesisHint(reading) {
@@ -538,7 +733,12 @@ function spreadSynthesisHint(reading) {
   const chain = cards
     .map((card) => `${card.position}=${card.name}${card.orientation === "逆位" ? "逆" : "正"}`)
     .join(" → ");
-  return `【牌阵能量链】${chain}。写作时按此因果链合参：从现状出发，看见阻碍如何卡住，再从建议找出口；整篇解读须能回答用户原问题。`;
+  const now = cardByPosition(cards, "现状", "今日指引", "我") || cards[0];
+  const advice = cardByPosition(cards, "建议", "下一步");
+  const loopNote = now && advice && now !== advice
+    ? `\n- 【同一主线闭环·必守】现状(${now.name})与建议(${advice.name})要落在同一条主线上：现状是「这股劲的起点」，建议是「这股劲的出口」。innerTheme 必须用一句话把三张串成因果链（现状的X → 被阻碍的Y卡住 → 建议把X收成一个动作），不要三张各说各话。建议位的 positionReading 结尾要轻轻回扣现状那股劲（如「也正是收起开头那份观望」），让用户看出首尾呼应。`
+    : "";
+  return `【牌阵能量链】${chain}。写作时按此因果链合参：从现状出发，看见阻碍如何卡住，再从建议找出口；整篇解读须能回答用户原问题。${loopNote}`;
 }
 
 function normalizeStringList(value, maxItems, maxLen, exact) {
@@ -556,85 +756,75 @@ function normalizeStringList(value, maxItems, maxLen, exact) {
 function buildPromptPayload(reading, { strictJson = false } = {}) {
   const p = reading.questionProfile || {};
   const choice = detectChoiceOptions(reading.question);
-  const cardsText = (reading.cards || []).map((card) => formatCardForPrompt(card)).join("\n\n");
+  const cardsText = (reading.cards || []).map((card) => formatCardForPrompt(card, p)).join("\n\n");
 
   const jsonNote = strictJson
     ? "\n【重要】上次输出不是合法 JSON。本次只输出一个 JSON 对象，不要 Markdown，不要解释，字符串内不要用换行。"
     : "";
 
   return {
-    system: `你是「星月少女塔罗馆」的 AI 塔罗牌师。你的首要任务：让用户感到【情绪被接住、被温柔引导、愿意信任你】，同时用本次牌阵认真回应 ta 的问题。
+    system: `你是「星月少女塔罗馆」的 AI 塔罗牌师。你的任务是：【贴牌如实解读 + 直接回应问题 + 温柔承接情绪】，让用户既感到被理解，也感到你在认真读牌。
 
 ══════════════════
-一、牌师人格 · 星月（最高优先级）
+一、牌师人格 · 星月
 ══════════════════
-1. 【接住 → 答问 → 贴牌】先命名用户感受，再回应字面问题，最后用牌佐证。禁止只安慰不答问，也禁止只分析不共情。
-2. 【关系语气】温柔、稳定、不评判；像并肩坐着的牌师，不是考官或预言机。全文「你」直接对话；「我」可偶尔出场（全篇 ≤2 次，如「我懂」「我想陪你看到」）。
-3. 【牌面驱动】每模块引用具体牌名；正/逆位必须与输入一致。逆位说成「还没找到出口的能量」，不说「坏消息」。
-4. 【合参牌阵】按 现状→阻碍→建议 因果链写；依据「牌意精华」转化，禁止照搬输入套话。
-5. 【去重复】同一信息只出现一次：详细牌意只在 positionReadings；briefSummary 是全篇浓缩；其他模块不得复述。
-6. 【口语化】像跟朋友语音聊天：短句、好读、少术语。✗「投入度偏低、疏离迹象」 ✓「好像还不太上心、有点淡」。
+1. 【如实 → 答问 → 接住】先根据牌阵给出客观判断（支持/挑战/中性均可），再回应用户字面问题，最后用半句温柔话承接。禁止只安慰不答问，也禁止只报喜不报忧。
+2. 【关系语气】稳定、不评判；像并肩坐着的牌师。全文「你」对话；「我」全篇 ≤2 次。
+3. 【牌面驱动】每模块引用具体牌名；正/逆位必须与输入一致。挑战牌必须点出卡点（延迟/冲突/消耗/结构问题/心意偏淡等），再用一句话承接情绪；禁止把挑战牌一律写成「耐心就好/在路上/别慌」。
+4. 【合参牌阵】按 现状→阻碍→建议 因果链；依据输入的关键词与基调，禁止套话。
+5. 【去重复】详细牌意只在 positionReadings；briefSummary 是全篇浓缩。
+6. 【口语化】短句好读；少用「暗示/迹象/投入度/疏离」等报告腔。
 
 ══════════════════
-二、专业边界（增信，不吓人）
+二、专业边界
 ══════════════════
 - 禁止：塔罗告诉你、命中注定、一定会/不会、具体日期承诺、医疗法律投资承诺、替用户拍板二选一。
-- 二选一：可比较两选项各自呼应什么；说不清时写「也许尚未到必须二选一」，并说明现阶段更该核对什么。
-- 边界写在心里，不要反复提醒用户「别焦虑」「别猜测」——用接住和引导代替说教。
+- 允许：如实指出阻滞、消耗、冷淡、延迟、冲突、不确定——这是专业读牌，不是恐吓。
+- 二选一：比较两选项各自呼应什么；说不清时说明「现阶段更该核对什么」。
 
 ══════════════════
 三、各字段写法
 ══════════════════
-headline（8-12字）
-  像牌师给你的今晚主题，温柔命名；短句即可，禁止引号与半截长句。
+headline（8-12字）：点题，可含挑战词（如「先看清阻滞」），禁止空泛「一切都会好」。
 
-briefSummary（45-60字，全篇浓缩 · 必写）
-  口语化两句话以内：接住心情 + 直接回应用户问题 + 一句结论。
-  ✓「我懂你想听准信。牌看ta现在偏淡、还没太热，你别急着否定自己。」
+briefSummary（45-80字）：接住 + 直接结论（可含挑战）+ 可选温柔半句。
+  ✓「我懂你想听准信。牌看ta偏淡、互动也少，别急着否定自己，但别靠猜补画面。」
+  ✗「offer在路上，别慌，好事多磨。」（无牌意依据的空安慰）
 
-presentState（≤55字）
-  只写感受与结论，不写牌名、不展开牌意（牌意只在 positionReadings）。
-  ✓「我懂你想听准信。就ta的心意，牌看暂时偏淡，先别自己吓自己。」
+presentState（≤55字）：感受 + 结论；有挑战牌时结论不得相反。
 
-innerTheme（≤40字）
-  三牌故事线一句，不重复 briefSummary。
+innerTheme（≤56字）：三牌因果链，串成同一主线，建议回扣现状那股劲，可含阻力。
 
-reminders（0-3 条，每条≤18字，便签体）
-  可选；只写关键词提醒。与逐张解读重复则不写。
+reminders（0-3 条，≤18字）：关键词便签；挑战牌可写「阻滞/消耗/延迟」。
 
-innerTension（≤48字）
-  只写内心两难，正常化一句；不复述牌面。
+innerTension（≤48字）：心理两难，正常化一句。
 
-reflectionQuestions（恰好 2 个，各≤32字）
-  口语、好答，像朋友追问。
+reflectionQuestions（2 个，≤32字）：口语、好答。
 
-gentleActions（恰好 2 条，各≤36字）
-  1 条自我关怀 + 1 条可执行小步；口语。
+gentleActions（2 条，≤36字）：1 条自我关怀 + 1 条可执行小步。
 
-closingLine（≤32字）
-  短收束，不重复行动建议、不说「谢谢你今晚的认真」。
+closingLine（≤32字）：短收束；可温暖，不得推翻前文挑战判断。
 
-positionReadings（每张 50-68 字）
-  唯一详细解牌处：牌位+牌名+正/逆位 → 扣题白话。
+positionReadings（每张 50-68 字）：牌位+牌名+正/逆位 → 扣题；结构「如实一句 + 温柔一句」。
 
 ══════════════════
 四、问题类型速查
 ══════════════════
-- offer / 职业：流程阶段感 + 区分事实与焦虑；问时间用阶段，不给具体日期。
-- 城市 / 二选一：分别写两选项各核对什么，可说「质感略偏…但仍需核实」。
-- 关系 / 对方：倾向+不确定，不替对方表白。
+- 未来 / 选择：写清路径、标准与需要之间的冲突；禁止 offer/评估窗/录用套话（除非用户明确问工作）。
+- offer / 职业：可说流程卡住/评估期/回报不明；问时间用阶段，不给具体日期。
+- 关系 / 对方：可说偏淡/未定型/沟通错位；不替对方表白。
 - 去留：继续/暂缓/先沟通，不说绝对答案。
 - 情绪：先承认感受合理，再给微小恢复动作。
 
 【输出】仅一个合法 JSON 对象，不要 Markdown，不要解释：${jsonNote}
 {
-  "headline": "8-12字温柔主题",
-  "briefSummary": "45-60字口语浓缩",
-  "presentState": "≤55字，感受+结论，不写牌名",
-  "innerTheme": "≤40字故事线",
-  "reminders": ["0-3条便签，每条≤18字"],
+  "headline": "8-12字点题",
+  "briefSummary": "45-80字如实浓缩",
+  "presentState": "≤55字，感受+结论",
+  "innerTheme": "≤56字因果链(现状↔建议同一主线)",
+  "reminders": ["0-3条便签"],
   "innerTension": "≤48字心理拉扯",
-  "reflectionQuestions": ["恰好2个口语问句"],
+  "reflectionQuestions": ["恰好2个"],
   "gentleActions": ["恰好2条"],
   "closingLine": "≤32字短收束",
   "positionReadings": [{"position":"牌位","cardName":"牌名","text":"50-68字"}]
@@ -674,8 +864,9 @@ function moodResponseHint(reading) {
   const embrace = moodEmbraceLines[reading.mood] || "用户此刻需要被温柔地看见。";
   const snippet = moodHintsSnippet(reading.mood);
   return `【此刻心情 · 必回应】用户选了「${label}」（${snippet}）。
-请在 presentState 句1 用类似语气接住这份感受（可参考：「${embrace}」），再回应字面问题。
-closingLine 也须让用户感到被陪伴，而非被丢下。`;
+请在 presentState 句1 用类似语气接住（可参考：「${embrace}」），再回应字面问题。
+结论须与牌阵基调一致：有挑战牌时不得只写「会好的/在路上」。
+closingLine 可温暖，但不得推翻前文挑战判断。`;
 }
 
 function holdsEmotion(text, reading) {
@@ -767,7 +958,7 @@ function normalizePositionReadings(parsed, reading, fallback) {
     return {
       position: String(item.position || card?.position || "").slice(0, 12),
       cardName: String(item.cardName || card?.name || "").slice(0, 16),
-      text: clampAtSentence(item.text, 68) || fallback.positionReadings?.[index]?.text || card?.keywords?.[0] || ""
+      text: clampSentenceClean(item.text, POSITION_READING_MAX) || fallback.positionReadings?.[index]?.text || card?.keywords?.[0] || ""
     };
   });
 }
@@ -790,7 +981,7 @@ function isWeakLine(text) {
 }
 
 function isMechanicalTheme(text) {
-  return /连成一条线|辨认你的节奏|正描出起点|带来拉扯，而.+指向出口/.test(String(text || ""));
+  return /连成一条线|辨认你的节奏|正描出起点|带来拉扯，而.+指向出口|经.+到.+，主线在|主线在过度付出$/.test(String(text || ""));
 }
 
 function hasHopeTone(text) {
@@ -798,7 +989,7 @@ function hasHopeTone(text) {
 }
 
 function isColdHeadline(text) {
-  return /中|受阻|恐惧|焦虑|失败|不行/.test(String(text || "")) && text.length <= 12;
+  return false;
 }
 
 function ensureSelfCareAction(actions, reading) {
@@ -875,13 +1066,9 @@ function polishPositionReadings(items, reading, fallback) {
   const cards = reading.cards || [];
   return cards.map((card, index) => {
     const item = items[index] || {};
-    let text = clampAtSentence(sanitizeCopy(item.text), 68);
-    if (
-      isWeakLine(text)
-      || !mentionsCard(text, card)
-      || text.length < 28
-      || orientationMismatch(text, card)
-    ) {
+    let body = normalizePositionBody(item.text, card, reading);
+    let text = clampSentenceClean(`${card.position}·${cardLabel(card)}：${body}`, POSITION_READING_MAX);
+    if (isWeakLine(text) || text.length < 28) {
       text = buildPositionReading(card, reading);
     }
     return {
@@ -900,9 +1087,6 @@ function colloquializeCopy(text) {
     .replace(/冷淡的迹象/g, "偏冷")
     .replace(/暗示/g, "更像是")
     .replace(/迹象/g, "")
-    .replace(/现状([^，。；]{1,8})(正|逆)位/g, "从现状牌看，")
-    .replace(/阻碍([^，。；]{1,8})(正|逆)位/g, "阻碍位")
-    .replace(/建议([^，。；]{1,8})(正|逆)位/g, "建议牌")
     .replace(/谢谢你今晚的认真。?/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();
@@ -937,19 +1121,94 @@ function dedupeListAgainstCorpus(list, corpus, maxLen = 48) {
     .filter((item) => item && !pool.some((base) => isSimilarCopy(item, base)));
 }
 
+function aiSummaryWrongFraming(text, reading) {
+  const body = String(text || "");
+  if (!isCareerQuestion(reading) && /offer|评估窗|录用|试用期|投递|offer 侧/.test(body)) return true;
+  if (/仍在评估\/等待窗|是当前主要阻力|宜慢，别在焦虑里催结果/.test(body)) return true;
+  return false;
+}
+
+function stripCareerLeakage(text, reading) {
+  const body = String(text || "");
+  if (!body || isCareerQuestion(reading)) return body;
+  if (/offer|评估窗|录用|试用期|投递|团队与节奏/.test(body)) return "";
+  return body;
+}
+
+function isCareerTemplateLeak(text, reading) {
+  if (isCareerQuestion(reading)) return false;
+  return /offer|评估窗|试用期|团队与节奏|快点有结果，又怕选错|offer 走向/.test(String(text || ""));
+}
+
 function buildBriefSummary(reading, ai) {
   if (ai?.briefSummary) {
-    return clampAtSentence(colloquializeCopy(ai.briefSummary), 80);
+    let out = clampAtSentence(colloquializeCopy(ai.briefSummary), 80);
+    const hasChallenge = (reading.cards || []).some((c) => cardValence(c) === "challenge");
+    if (
+      (hasChallenge && soundsOverlyPositive(out))
+      || aiSummaryWrongFraming(out, reading)
+    ) {
+      out = buildBriefSummaryFromCards(reading);
+    }
+    if (/\…$/.test(out) && out.length >= Math.floor(80 * 0.85)) {
+      out = buildBriefSummaryFromCards(reading);
+    }
+    return out;
   }
+  return buildBriefSummaryFromCards(reading);
+}
+
+function buildBriefSummaryFromCards(reading) {
   const sig = questionSignals(reading);
   const embrace = (moodEmbraceLines[reading.mood] || "我懂你在意。").replace(/。$/, "");
+  const block = cardByPosition(reading.cards, "阻碍", "隐藏因素");
+  const now = cardByPosition(reading.cards, "现状", "今日指引", "我") || reading.cards?.[0];
+  const bk = block?.keywords?.[0];
+  const challengeCount = (reading.cards || []).filter((c) => cardValence(c) === "challenge").length;
+
   if (sig.asksOtherFeeling) {
-    return clampAtSentence(`${embrace}。牌看ta暂时偏淡，你别急着否定自己。`, 65);
+    if (cardValence(now) === "challenge") {
+      return clampAtSentence(`${embrace}。牌看ta偏淡${bk ? `，${bk}是主要拉扯` : ""}，别靠猜。`, 80);
+    }
+    return clampAtSentence(`${embrace}。牌看有互动空间，但还没到定论。`, 80);
   }
   if (sig.asksOffer) {
-    return clampAtSentence(`${embrace}。offer还在路上，先分清事实和担心。`, 65);
+    const blockDevil = block?.name.includes("恶魔");
+    if (blockDevil && block.orientation === "逆位") {
+      return clampAtSentence(
+        `${embrace}。仍在等消息，但对结果的执念在松动；先回到什么对你真正值得。`,
+        80
+      );
+    }
+    if (challengeCount >= 2) {
+      return clampAtSentence(`${embrace}。offer 阻滞偏多${bk ? `，${bk}要先处理` : ""}。`, 80);
+    }
+    if (cardValence(block) === "challenge" && bk) {
+      return clampAtSentence(`${embrace}。offer 还在评估，${bk}是当前主要卡点。`, 80);
+    }
+    if (cardValence(now) === "challenge") {
+      return clampAtSentence(`${embrace}。仍在评估窗，${now?.keywords?.[0] || "先核实流程"}。`, 80);
+    }
+    return clampAtSentence(`${embrace}。offer 还在评估期，分清事实和担心。`, 80);
   }
-  return clampAtSentence(`${embrace}。牌在陪你慢慢看清，不必今天就想通。`, 65);
+  if (sig.asksFuture && !isCareerQuestion(reading)) {
+    const nowK = now?.keywords?.[0];
+    const blockK = block?.keywords?.[0];
+    if (pentaclesCardCount(reading.cards) >= 2) {
+      return clampAtSentence(
+        `${embrace}。牌先看${nowK || "施与受"}是否公平，${block?.name || "阻碍"}再问标准是否太硬。`,
+        80
+      );
+    }
+    if (challengeCount >= 2) {
+      return clampAtSentence(`${embrace}。挑战牌偏多，先处理${nowK || bk || "主要卡点"}。`, 80);
+    }
+    return clampAtSentence(`${embrace}。方向还在辨认期，${blockK ? `${blockK}是需要先看清的部分` : "先把标准与需要分开"}。`, 80);
+  }
+  if (challengeCount >= 2) {
+    return clampAtSentence(`${embrace}。牌阵挑战偏多，先处理${bk || now?.keywords?.[0] || "卡点"}。`, 80);
+  }
+  return clampAtSentence(`${embrace}。牌在帮你看清局面，不必今天就想通。`, 80);
 }
 
 function compactPresentState(reading, text, briefSummary) {
@@ -985,16 +1244,19 @@ function dedupeClosingLine(closingLine, briefSummary, gentleActions) {
   return clampAtSentence(out, 34);
 }
 
-function normalizeAiResult(parsed, reading) {
+export function normalizeAiResult(parsed, reading) {
   const fallback = buildGentleFallback(reading);
   let positionReadings = normalizePositionReadings(parsed, reading, fallback);
   positionReadings = polishPositionReadings(positionReadings, reading, fallback);
   positionReadings = positionReadings.map((item) => ({
     ...item,
-    text: clampAtSentence(colloquializeCopy(item.text), 68)
+    text: clampSentenceClean(colloquializeCopy(item.text), POSITION_READING_MAX)
   }));
 
   let briefSummary = buildBriefSummary(reading, parsed);
+  if (soundsOverlyPositive(briefSummary) && (reading.cards || []).some((c) => cardValence(c) === "challenge")) {
+    briefSummary = buildBriefSummaryFromCards(reading);
+  }
   let presentState = compactPresentState(
     reading,
     sanitizeCopy(parsed.presentState || parsed.opening),
@@ -1006,7 +1268,7 @@ function normalizeAiResult(parsed, reading) {
   }
   presentState = dedupePresentState(presentState, briefSummary);
 
-  let innerTheme = clampAtSentence(colloquializeCopy(parsed.innerTheme), 42) || fallback.innerTheme;
+  let innerTheme = clampSentenceClean(colloquializeCopy(parsed.innerTheme), 58) || fallback.innerTheme;
   if (isWeakLine(innerTheme) || isMechanicalTheme(innerTheme) || isSimilarCopy(innerTheme, briefSummary)) {
     innerTheme = groundInnerTheme(reading);
   }
@@ -1019,6 +1281,9 @@ function normalizeAiResult(parsed, reading) {
 
   let innerTension = clampAtSentence(colloquializeCopy(parsed.innerTension || parsed.synthesis), 50)
     || fallback.innerTension;
+  if (isCareerTemplateLeak(innerTension, reading)) {
+    innerTension = groundInnerTension(reading);
+  }
   const blockCard = cardByPosition(reading.cards, "阻碍", "隐藏因素");
   const nowCard = cardByPosition(reading.cards, "现状", "今日指引", "我");
   if (
@@ -1031,11 +1296,20 @@ function normalizeAiResult(parsed, reading) {
     innerTension = groundInnerTension(reading);
   }
 
-  const reflectionQuestions =
+  const reflectionQuestionsRaw =
     normalizeStringList(parsed.reflectionQuestions, 2, 34, 2) || fallback.reflectionQuestions;
+  let reflectionQuestions = reflectionQuestionsRaw;
+  if (!isCareerQuestion(reading) && reflectionQuestions.some((q) => isCareerTemplateLeak(q, reading))) {
+    reflectionQuestions = fallback.reflectionQuestions;
+  }
+
   let gentleActions = normalizeStringList(parsed.gentleActions, 2, 36)
     || normalizeStringList(parsed.action ? [parsed.action] : null, 2, 36)
     || fallback.gentleActions;
+  gentleActions = gentleActions.filter((item) => stripCareerLeakage(item, reading));
+  if (gentleActions.length < 2) {
+    gentleActions = fallback.gentleActions;
+  }
   gentleActions = ensureSelfCareAction(
     dedupeListAgainstCorpus(gentleActions, [briefSummary, ...positionReadings.map((item) => item.text)], 36),
     reading
@@ -1063,6 +1337,14 @@ function normalizeAiResult(parsed, reading) {
     gentleActions,
     closingLine,
     positionReadings,
+    spreadTone: {
+      challengeCount: (reading.cards || []).filter((c) => cardValence(c) === "challenge").length,
+      labels: (reading.cards || []).map((c) => ({
+        position: c.position,
+        name: c.name,
+        valence: cardValenceLabel(c)
+      }))
+    },
     directAnswer: briefSummary,
     insight: innerTheme,
     cardLines: positionReadings.map((item) => `${item.position}｜${item.cardName}｜${item.text.slice(0, 24)}`),
@@ -1097,11 +1379,23 @@ export function buildGentleFallback(reading) {
     "如果不必今天做决定，你希望自己被怎样对待？",
     "你现在犹豫的，更多是现实本身，还是对未来的担心？"
   ];
-  if (sig.asksOffer) {
+  if (sig.asksFuture && !isCareerQuestion(reading)) {
     reflectionQuestions = [
-      "offer 里哪些条件已书面确认，哪些还只是你的担心？",
-      "如果暂缓一周，你最想先照顾好自己哪一部分？"
+      "给予与回报里，哪一边让你觉得不公平？",
+      "如果把「稳健」放一放，你最想朝哪个方向试探？"
     ];
+  } else if (sig.asksOffer) {
+    if (/等消息|等结果|面试|没消息/.test(reading.question || "")) {
+      reflectionQuestions = [
+        "这份工作最吸引你的是什么？",
+        "如果暂时没消息，你还能做些什么让自己安心？"
+      ];
+    } else {
+      reflectionQuestions = [
+        "offer 里哪些条件已书面确认，哪些还只是你的担心？",
+        "如果暂缓一周，你最想先照顾好自己哪一部分？"
+      ];
+    }
   }
   if (sig.choice) {
     reflectionQuestions = [
@@ -1114,8 +1408,12 @@ export function buildGentleFallback(reading) {
     "今晚允许自己早一点休息，答案可以明天再想",
     "可以试着列一张「已确认事实 / 我的担心」对照表"
   ];
-  if (p.isCareer) {
+  if (isCareerQuestion(reading)) {
     gentleActions[1] = "可以试着核对 offer 的试用期、团队与节奏是否匹配你";
+  } else if (pentaclesCardCount(cards) >= 2) {
+    gentleActions[1] = "列一张给予/索取清单，看天平哪边偏了";
+  } else if (sig.asksFuture) {
+    gentleActions[1] = "写下两个选项各自满足你什么、又牺牲什么";
   }
   gentleActions = ensureSelfCareAction(gentleActions, reading);
 

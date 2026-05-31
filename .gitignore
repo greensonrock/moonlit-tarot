@@ -3,3 +3,4 @@
 cloudflared.tgz
 node_modules/
 .env
+.cards-backup-original/

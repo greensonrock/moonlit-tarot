@@ -17,3 +17,7 @@ services:
         value: https://www.dmxapi.com
       - key: DMXAPI_KEY
         sync: false
+      - key: REVERSE_RATE
+        value: "0.5"
+      - key: ORIENT_MODE
+        value: linked
