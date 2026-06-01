@@ -11,8 +11,17 @@ function mk(spec, positions) {
   });
 }
 const POS = ["现状", "阻碍", "建议"];
+const ONE = ["今日指引"];
 
 const scenarios = [
+  {
+    label: "单张速读·该不该裸辞(宝剑三)",
+    profile: { intent: "工作与野心", subject: "工作处境", coreNeed: "想理清要不要裸辞", isCareer: true },
+    mood: "calmChaos",
+    spread: "one",
+    question: "新主管很强势让我每天焦虑失眠，我到底该不该马上裸辞",
+    cards: mk([["宝剑三", "正位"]], ONE)
+  },
   {
     label: "小安·该不该裸辞(含宝剑三)",
     profile: { intent: "职业方向", subject: "工作处境", coreNeed: "想理清要不要裸辞", isCareer: true },
@@ -30,7 +39,7 @@ const scenarios = [
 ];
 
 for (const s of scenarios) {
-  const reading = { theme: "future", themeLabel: s.profile.intent, mood: s.mood, question: s.question, spread: "three", questionProfile: s.profile, cards: s.cards };
+  const reading = { theme: "future", themeLabel: s.profile.intent, mood: s.mood, question: s.question, spread: s.spread || "three", questionProfile: s.profile, cards: s.cards };
   const ai = await generateAiSummary(reading);
   console.log("\n========== " + s.label + " ==========");
   console.log("牌面:", s.cards.map((c) => `${c.position}=${c.name}${c.orientation}`).join(" | "));

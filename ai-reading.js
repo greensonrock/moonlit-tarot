@@ -417,6 +417,7 @@ function pickSpreadHeadline(reading) {
     return "先正视阻力";
   }
 
+  if (sig.choice) return "二选一，先看清卡点";
   if (sig.asksOffer) return "offer还在评估期";
 
   const candidates = [
@@ -533,6 +534,14 @@ function cardFacetWord(card) {
 
 function groundInnerTheme(reading) {
   const cards = reading.cards || [];
+  if (cards.length === 1) {
+    const c = cards[0];
+    const word = cardFacetWord(c) || c.keywords?.[0] || "此刻";
+    return clampSentenceClean(
+      `这张「${c.name}」像镜子照见你此刻的「${word}」——别只盯着表层问题，真正要看清的是它在提醒你把什么收成一个行动。`,
+      72
+    );
+  }
   if (cards.length < 2) return "牌在帮你辨认当下真正要紧的那一件事。";
   const now = cardByPosition(cards, "现状", "今日指引", "我") || cards[0];
   const block = cardByPosition(cards, "阻碍", "隐藏因素") || cards[1];
@@ -570,7 +579,7 @@ function groundInnerTension(reading) {
 
 function groundClosingLine(reading) {
   const sig = questionSignals(reading);
-  const advice = cardByPosition(reading.cards, "建议", "下一步");
+  const advice = cardByPosition(reading.cards, "建议", "下一步", "今日指引") || reading.cards?.[0];
   const lead = advice ? cardFacetWord(advice) : "";
   if (sig.asksOffer) {
     return "先核对硬条件，再谈时机——别让等待替你做决定。";
@@ -748,6 +757,15 @@ function positionLensHint(position) {
 function spreadSynthesisHint(reading) {
   const cards = reading.cards || [];
   if (!cards.length) return "";
+  if (cards.length === 1) {
+    const c = cards[0];
+    const word = cardFacetWord(c) || c.keywords?.[0] || c.name;
+    return `【单张速读 · 必守】这一盘只有一张「${c.name}（${c.orientation}）」，不要假装有现状/阻碍/建议三段、不要编造别的牌。请：
+- briefSummary：先用牌面意象照见用户此刻关于其问题的真实状态（镜子，让ta觉得「这就是我」），再给一句直接结论。
+- innerTheme：把表层问题【重新框定】成更深的课题或视角转换（围绕「${word}」与该牌的元素含义），不要复述牌名。
+- gentleActions：给一个本周可做、具体到对象/步骤、且直接回应用户原问题的动作。
+- 全篇必须回答用户的原问题，给出明确倾向，禁止「顺其自然/慢慢来」充当主要指引。`;
+  }
   const chain = cards
     .map((card) => `${card.position}=${card.name}${card.orientation === "逆位" ? "逆" : "正"}`)
     .join(" → ");
@@ -1037,7 +1055,7 @@ function clampActionClean(text, max = 40) {
 /** 让「温柔尝试」具体、有方向：去套话 → 以建议牌行动领衔 → 用回退补足两条 */
 function groundGentleActions(actions, reading, fallback) {
   let list = dropPlatitudes(actions).map((s) => clampActionClean(s, 40)).filter(Boolean);
-  const advice = cardByPosition(reading.cards, "建议", "下一步");
+  const advice = cardByPosition(reading.cards, "建议", "下一步", "今日指引") || reading.cards?.[0];
   if (advice?.actionHint && !list.some((it) => isSimilarCopy(it, advice.actionHint))) {
     list.unshift(clampActionClean(advice.actionHint, 40));
   }

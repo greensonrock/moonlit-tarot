@@ -1,5 +1,11 @@
 const app = document.querySelector("#app");
 
+function askBanner() {
+  const q = (state.question || "").trim();
+  if (!q) return "";
+  return `<p class="ask-banner">你正带着这个问题抽牌：<span>「${escapeHtml(q)}」</span></p>`;
+}
+
 const themes = [
   ["relationship", "心动与关系", "暧昧、靠近、边界与真实表达"],
   ["future", "未来与选择", "方向、转机、未知与勇气"],
@@ -84,17 +90,17 @@ function hideRitualOverlay(el) {
 }
 
 function startQuickDraw() {
-  state.theme = "relationship";
+  state.theme = "self";
   state.mood = "lost";
-  state.question = questions.relationship[0];
-  state.spread = "three";
+  state.question = "";
+  state.spread = "one";
   state.quickPath = true;
   state.reading = null;
   state.revealed = [];
   state.selectedSlots = [];
   state.reportExpanded = false;
   buzz([8, 18, 8]);
-  go("shuffle");
+  go("question");
 }
 
 function redrawSameQuestion() {
@@ -210,11 +216,11 @@ function renderHome() {
           <button class="btn secondary" data-history>抽卡记录</button>
         </div>
       </div>
-      <button class="moon-deck tap-deck" type="button" aria-label="点击卡牌，立即开始抽牌">
+      <button class="moon-deck tap-deck" type="button" aria-label="点击卡牌，带着一个问题抽一张">
         <span class="hero-card c1"></span>
         <span class="hero-card c2"></span>
         <span class="hero-card c3"></span>
-        <span class="tap-hint">点击卡牌开始 ✦</span>
+        <span class="tap-hint">单张速读 · 带个问题照见此刻 ✦</span>
       </button>
     </div>
   `;
@@ -253,20 +259,27 @@ function renderMood() {
 }
 
 function renderQuestion() {
+  const quick = state.quickPath;
   const box = document.createElement("div");
   box.className = "question-box";
-  const presets = questions[state.theme] || questions.relationship;
+  // 单张速读没有选过主题，给一组通用的好问题；完整流程用主题预设
+  const presets = quick
+    ? ["我此刻最需要看见什么？", "关于这件事，我忽略了什么？", "我现在该把力气放在哪里？", "对这个选择，我内心真正的声音是什么？"]
+    : (questions[state.theme] || questions.relationship);
   box.innerHTML = `
-    <textarea placeholder="写下你想问的问题，例如：我该不该继续等待这段关系？">${state.question}</textarea>
+    <textarea placeholder="写下你真正想问的那一件事，例如：新主管让我很焦虑，我该不该裸辞？">${state.question}</textarea>
+    <p class="field-hint" data-q-hint>带着一个具体的问题抽牌，解读会更有针对性。</p>
     <div class="chips"></div>
     <div class="actions">
       <button class="btn secondary" data-back>上一步</button>
-      <button class="btn primary" data-next>继续</button>
+      <button class="btn primary" data-next>${quick ? "抽这一张" : "继续"}</button>
     </div>
   `;
   const textarea = box.querySelector("textarea");
+  const hint = box.querySelector("[data-q-hint]");
   textarea.addEventListener("input", () => {
     state.question = textarea.value;
+    hint.classList.remove("is-error");
   });
   const chips = box.querySelector(".chips");
   presets.forEach((text) => {
@@ -276,15 +289,28 @@ function renderQuestion() {
     chip.addEventListener("click", () => {
       state.question = text;
       textarea.value = text;
+      hint.classList.remove("is-error");
     });
     chips.append(chip);
   });
-  box.querySelector("[data-back]").addEventListener("click", () => go("mood"));
+  box.querySelector("[data-back]").addEventListener("click", () => go(quick ? "home" : "mood"));
   box.querySelector("[data-next]").addEventListener("click", () => {
-    state.question = textarea.value.trim() || presets[0];
-    go("spread");
+    const q = textarea.value.trim();
+    if (q.length < 4) {
+      hint.textContent = "先写下或点选一个你想问的问题，牌才知道要回应什么。";
+      hint.classList.add("is-error");
+      textarea.focus();
+      buzz([6, 12, 6]);
+      return;
+    }
+    state.question = q;
+    go(quick ? "shuffle" : "spread");
   });
-  return screen(panel("把问题说给牌听", "可以直接写，也可以点选一句更接近你此刻心事的问题。", box, "3 / 5"));
+  const title = quick ? "先把问题说给牌听" : "把问题说给牌听";
+  const subtitle = quick
+    ? "单张速读：带着一个真正的问题，抽一张照见此刻。"
+    : "可以直接写，也可以点选一句更接近你此刻心事的问题。";
+  return screen(panel(title, subtitle, box, quick ? "带着问题 · 单张" : "3 / 5"));
 }
 
 function renderSpread() {
@@ -307,6 +333,7 @@ function renderShuffle() {
       <p class="eyebrow">Hold to Shuffle</p>
       <h2>请想着你的问题，停留三秒</h2>
       <p class="lede">当星光聚满，牌会准备好回应你。</p>
+      ${askBanner()}
     </div>
     <button class="deck-stack" aria-label="长按洗牌">
       <span class="hold-ring"></span>
@@ -347,7 +374,7 @@ function renderShuffle() {
   ["pointerup", "pointerleave", "pointercancel"].forEach((event) => deck.addEventListener(event, reset));
   wrap.querySelector("[data-skip]").addEventListener("click", complete);
   wrap.querySelector("[data-back]").addEventListener("click", () => {
-    go(state.quickPath ? "home" : "spread");
+    go(state.quickPath ? "question" : "spread");
   });
   return screen(wrap);
 }
@@ -356,6 +383,7 @@ function renderPick() {
   state.selectedSlots = [];
   const body = document.createElement("div");
   body.innerHTML = `
+    ${askBanner()}
     <div class="hint">牌已经洗好并摊成扇形。请在同一个界面里点选 ${spreadCount()} 张牌，抽中的牌会从牌阵里轻轻上浮。</div>
     <div class="fan-table" aria-label="扇形塔罗牌阵">
       <div class="pick-count" data-pick-count>已选择 <strong>0</strong> / ${spreadCount()}</div>

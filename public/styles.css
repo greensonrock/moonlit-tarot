@@ -258,6 +258,35 @@ h3 {
   gap: 12px;
 }
 
+.field-hint {
+  margin: -2px 2px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  transition: color 0.2s ease;
+}
+
+.field-hint.is-error {
+  color: #c0556b;
+  font-weight: 600;
+}
+
+.ask-banner {
+  margin: 10px 0 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: rgba(141, 123, 211, 0.1);
+  border: 1px solid rgba(141, 123, 211, 0.22);
+}
+
+.ask-banner span {
+  font-weight: 600;
+  color: #6b5bb0;
+}
+
 textarea {
   width: 100%;
   min-height: 118px;
