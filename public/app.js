@@ -58,6 +58,16 @@ const state = {
 
 const spreadCount = () => ({ one: 1, three: 3, four: 4 }[state.spread] || 3);
 
+function spreadActionLabels() {
+  const single = state.spread === "one";
+  return {
+    redraw: single ? "再抽一张" : "同题再抽",
+    newQuestion: single ? "换个问题" : "新的问题",
+    redrawToast: single ? "同一问题，再抽一张 ✦" : "同一问题，新的牌局 ✦",
+    newQuestionToast: single ? "带着新的问题再来 ✦" : "开启新的提问 ✦"
+  };
+}
+
 function buzz(pattern = 8) {
   if (!navigator.vibrate) return;
   navigator.vibrate(Array.isArray(pattern) ? pattern : [pattern]);
@@ -109,7 +119,7 @@ function redrawSameQuestion() {
   state.revealed = [];
   state.reportExpanded = false;
   buzz(10);
-  toast("同一问题，新的牌局 ✦");
+  toast(spreadActionLabels().redrawToast);
   go("shuffle");
 }
 
@@ -596,6 +606,8 @@ function flipRevealCard({ index, card, el, slot, wrap, reportButton, isMajor, is
 function renderReveal() {
   const spreadId = state.spread || "three";
   const total = state.reading.cards.length;
+  const actions = spreadActionLabels();
+  const single = spreadId === "one";
   if (!state.revealed?.length || state.revealed.length !== total) {
     state.revealed = state.reading.cards.map(() => false);
   }
@@ -604,8 +616,11 @@ function renderReveal() {
   wrap.innerHTML = `
     <div class="panel reveal-intro">
       <p class="eyebrow">Reveal</p>
-      <h2>逐张翻开今晚的牌</h2>
-      <p class="lede">像真实占卜桌面一样，由牌师引导你一张一张翻开。每张牌对应一个牌位，全部揭开后即可阅读完整解读。</p>
+      <h2>${single ? "翻开这一张牌" : "逐张翻开今晚的牌"}</h2>
+      <p class="lede">${single
+    ? "带着你的问题，亲手翻开这一张。牌会像镜子一样照见你此刻的状态。"
+    : "像真实占卜桌面一样，由牌师引导你一张一张翻开。每张牌对应一个牌位，全部揭开后即可阅读完整解读。"}</p>
+      ${askBanner()}
       <p class="reveal-guide" data-reveal-guide aria-live="polite"></p>
       <div class="reveal-progress" aria-live="polite">
         <span class="reveal-progress-label">已翻开 <strong data-revealed-count>0</strong> / ${total}</span>
@@ -615,12 +630,12 @@ function renderReveal() {
     <div class="reveal-table">
       <div class="reveal-table-glow" aria-hidden="true"></div>
       <div class="reading-cards reveal-deck reveal-deck--${spreadId}"></div>
-      <p class="reveal-table-hint">轻触尚未翻开的牌背</p>
+      <p class="reveal-table-hint">${single ? "轻触牌背，翻开今日指引" : "轻触尚未翻开的牌背"}</p>
       <p class="reveal-whisper" data-whisper aria-live="polite"></p>
     </div>
     <div class="actions reveal-actions">
-      <button class="btn secondary" data-redraw>同题再抽</button>
-      <button class="btn secondary" data-newq>新的问题</button>
+      <button class="btn secondary" data-redraw>${actions.redraw}</button>
+      <button class="btn secondary" data-newq>${actions.newQuestion}</button>
       <button class="btn primary" data-report disabled>查看 AI 解读</button>
     </div>
   `;
@@ -708,6 +723,7 @@ function renderReveal() {
 function renderReport() {
   const reading = state.reading;
   const teaser = reportTeaser(reading);
+  const actions = spreadActionLabels();
   const wrap = document.createElement("div");
   wrap.className = "shell report";
   const cards = reading.cards.map((card) => `${card.position}：${card.name} ${card.orientation}`).join("<br>");
@@ -733,8 +749,8 @@ function renderReport() {
       </div>
       <div class="actions report-loop">
         <button class="btn primary" data-save>保存结果</button>
-        <button class="btn secondary" data-redraw>同题再抽</button>
-        <button class="btn secondary" data-newq>新的问题</button>
+        <button class="btn secondary" data-redraw>${actions.redraw}</button>
+        <button class="btn secondary" data-newq>${actions.newQuestion}</button>
         <button class="btn secondary" data-history>抽卡记录</button>
       </div>
     </aside>
@@ -1157,15 +1173,21 @@ function go(step) {
 }
 
 function resetAll() {
-  state.step = "theme";
-  state.quickPath = false;
+  const labels = spreadActionLabels();
+  const quickSingle = state.quickPath && state.spread === "one";
   state.question = "";
   state.selectedSlots = [];
   state.reading = null;
   state.revealed = [];
   state.reportExpanded = false;
+  if (quickSingle) {
+    state.step = "question";
+  } else {
+    state.step = "theme";
+    state.quickPath = false;
+  }
   buzz(8);
-  toast("开启新的提问 ✦");
+  toast(labels.newQuestionToast);
   render();
 }
 

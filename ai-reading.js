@@ -500,6 +500,10 @@ function groundPresentState(reading) {
     }
     return `${embrace}。心意还在辨认期，先看清互动再下结论。`;
   }
+  if (sig.choice) {
+    const { a, b } = sig.choice;
+    return `${embrace}。你要在「${a}」与「${b}」之间分辨——牌说卡点往往不在选项本身，而是你还不敢为选择负责。`;
+  }
   if (sig.asksOffer && sig.asksWhenWhere) {
     if (valence === "challenge") {
       return `${embrace}。offer 何时何地仍不明，${k0 || "流程"}上有阻滞要先核实。`;
@@ -511,9 +515,6 @@ function groundPresentState(reading) {
       return `${embrace}。工作上${k0 || "仍有卡点"}，别在焦虑里催结果。`;
     }
     return `${embrace}。仍在观望/评估期，分清事实和担心。`;
-  }
-  if (sig.choice) {
-    return `${embrace}。两边都还有${k0 || "变量"}，今天不必硬选。`;
   }
   if (sig.asksFuture && !isCareerQuestion(reading)) {
     if (valence === "challenge") {
@@ -551,15 +552,15 @@ function groundInnerTheme(reading) {
 
   // 三张串成一条因果链，并让「建议」回扣到「现状」那股劲——同一主线闭环
   if (pentaclesCardCount(cards) >= 2) {
-    return clampAtSentence(
+    return clampSentenceClean(
       `从${now.name}的「${nk}」起，被${block.name}的「${bk}」拖住，到${advice?.name || "建议"}其实绕回同一件事：先把滋养放回自己身上。`,
-      58
+      72
     );
   }
 
-  return clampAtSentence(
+  return clampSentenceClean(
     `从${now.name}的「${nk}」出发，卡在${block.name}的「${bk}」上，而真正的出口，是回到开头这股劲，在${advice?.name || "建议"}里把它收成一个动作。`,
-    58
+    72
   );
 }
 
@@ -567,6 +568,9 @@ function groundInnerTension(reading) {
   const sig = questionSignals(reading);
   if (sig.asksOtherFeeling) {
     return "你想靠近确认，又怕主动会打破平衡——这很正常。";
+  }
+  if (sig.choice) {
+    return "既怕选错了浪费机会，又怕不选就一直耗在原地——这很正常。";
   }
   if (sig.asksOffer) {
     return "你想快点有结果，又怕选错——这份慎重挺珍贵。";
@@ -581,11 +585,11 @@ function groundClosingLine(reading) {
   const sig = questionSignals(reading);
   const advice = cardByPosition(reading.cards, "建议", "下一步", "今日指引") || reading.cards?.[0];
   const lead = advice ? cardFacetWord(advice) : "";
-  if (sig.asksOffer) {
-    return "先核对硬条件，再谈时机——别让等待替你做决定。";
-  }
   if (sig.choice) {
     return "把现实条件摆清楚，答案会比你以为的更早浮现。";
+  }
+  if (sig.asksOffer) {
+    return "先核对硬条件，再谈时机——别让等待替你做决定。";
   }
   if (sig.asksOtherFeeling) {
     return "用一次真实互动确认，比反复猜更靠近答案。";
@@ -1197,6 +1201,14 @@ function dedupeListAgainstCorpus(list, corpus, maxLen = 48) {
 
 function aiSummaryWrongFraming(text, reading) {
   const body = String(text || "");
+  const sig = questionSignals(reading);
+  if (
+    sig.choice
+    && /还在评估|评估期|评估窗|等消息|等待期|offer 还在|仍在评估/.test(body)
+    && !(body.includes(sig.choice.a) && body.includes(sig.choice.b))
+  ) {
+    return true;
+  }
   if (!isCareerQuestion(reading) && /offer|评估窗|录用|试用期|投递|offer 侧/.test(body)) return true;
   if (/仍在评估\/等待窗|是当前主要阻力|宜慢，别在焦虑里催结果/.test(body)) return true;
   return false;
@@ -1245,6 +1257,13 @@ function buildBriefSummaryFromCards(reading) {
       return clampAtSentence(`${embrace}。牌看ta偏淡${bk ? `，${bk}是主要拉扯` : ""}，别靠猜。`, 80);
     }
     return clampAtSentence(`${embrace}。牌看有互动空间，但还没到定论。`, 80);
+  }
+  if (sig.choice) {
+    const { a, b } = sig.choice;
+    return clampAtSentence(
+      `${embrace}。你要在「${a}」与「${b}」之间分辨——牌说卡点往往不在选项本身，而是你还不敢为选择负责。`,
+      80
+    );
   }
   if (sig.asksOffer) {
     const blockDevil = block?.name.includes("恶魔");
