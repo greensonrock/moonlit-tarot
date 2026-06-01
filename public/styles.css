@@ -708,6 +708,32 @@ textarea:focus {
   height: min(42vh, 380px);
 }
 
+.fan-deck-meta {
+  position: relative;
+  z-index: 2;
+  margin: 0 auto 6px;
+  max-width: 36em;
+  text-align: center;
+  color: rgba(255, 255, 255, .72);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.fan-deck[data-fan-size="78"] .pick-card,
+.fan-deck[data-fan-size="56"] .pick-card {
+  width: 76px;
+  left: calc(50% - 38px);
+}
+
+.fan-deck[data-fan-size="78"] {
+  height: min(46vh, 400px);
+}
+
+.fan-deck[data-fan-size="78"] .pick-card {
+  width: 64px;
+  left: calc(50% - 32px);
+}
+
 .pick-card {
   position: absolute;
   left: calc(50% - 47px);
@@ -1135,12 +1161,26 @@ textarea:focus {
   }
 
   .pick-table .fan-deck {
-    height: 400px;
+    height: 420px;
+  }
+
+  .fan-deck[data-fan-size="78"] {
+    height: 440px;
   }
 
   .pick-card {
     width: 102px;
     left: calc(50% - 51px);
+  }
+
+  .fan-deck[data-fan-size="78"] .pick-card {
+    width: 70px;
+    left: calc(50% - 35px);
+  }
+
+  .fan-deck[data-fan-size="56"] .pick-card {
+    width: 82px;
+    left: calc(50% - 41px);
   }
 
   .reveal-stage {

@@ -81,6 +81,28 @@ function spreadPositions() {
   return SPREAD_POSITIONS[state.spread] || SPREAD_POSITIONS.three;
 }
 
+/** 整副塔罗 78 张；扇形展示张数随桌面宽度增加（非固定 27） */
+const FULL_DECK_SIZE = 78;
+
+function computeFanSize() {
+  const w = window.innerWidth;
+  if (w >= 1200) return FULL_DECK_SIZE;
+  if (w >= 960) return 56;
+  if (w >= 640) return 42;
+  return 34;
+}
+
+function fanCardLayout(index, fanSize, containerWidth = 900) {
+  const center = (fanSize - 1) / 2;
+  const distance = index - center;
+  const arcDeg = Math.min(172, 48 + fanSize * 1.55);
+  const angle = fanSize > 1 ? distance * (arcDeg / (fanSize - 1)) : 0;
+  const spreadPx = Math.min(containerWidth * 0.9, 20 + fanSize * 10.5);
+  const x = center > 0 ? distance * (spreadPx / center) : 0;
+  const y = Math.abs(distance) * (1.2 + fanSize * 0.035);
+  return { angle, x, y };
+}
+
 /** 某张牌位的完整解读正文（翻牌 / 故事章节共用） */
 function getPositionReadingFull(reading, index) {
   const card = reading?.cards?.[index];
@@ -475,7 +497,8 @@ function renderPick() {
       <div class="table-surface pick-table" aria-label="扇形抽牌区">
         <div class="table-surface__rim" aria-hidden="true"></div>
         <div class="pick-count" data-pick-count>已选 <strong>0</strong> / ${need}</div>
-        <div class="fan-deck"></div>
+        <p class="fan-deck-meta" data-fan-meta aria-live="polite"></p>
+        <div class="fan-deck" data-fan-deck></div>
       </div>
       <aside class="pick-slots" aria-label="牌位落点">
         <p class="pick-slots__title">你的牌位</p>
@@ -514,8 +537,26 @@ function renderPick() {
     });
   };
 
-  const fanSize = 27;
+  const fanSize = computeFanSize();
+  grid.dataset.fanSize = String(fanSize);
   let wasComplete = false;
+
+  const applyFanLayout = () => {
+    const w = grid.clientWidth || window.innerWidth;
+    const meta = body.querySelector("[data-fan-meta]");
+    if (meta) {
+      meta.textContent = fanSize >= FULL_DECK_SIZE
+        ? `扇形摊开整副 ${FULL_DECK_SIZE} 张背牌 · 点选位置决定抽到哪张`
+        : `扇形摊开 ${fanSize} 张背牌（整副 ${FULL_DECK_SIZE} 张已洗入牌堆）· 点选位置决定抽到哪张`;
+    }
+    grid.querySelectorAll(".pick-card").forEach((card, index) => {
+      const { angle, x, y } = fanCardLayout(index, fanSize, w);
+      card.style.setProperty("--angle", `${angle}deg`);
+      card.style.setProperty("--x", `${x}px`);
+      card.style.setProperty("--y", `${y}px`);
+      card.setAttribute("aria-label", `扇形第 ${index + 1} 张，共 ${fanSize} 张`);
+    });
+  };
   const updatePickCount = () => {
     const done = state.selectedSlots.length === need;
     countLabel.textContent = state.selectedSlots.length;
@@ -534,20 +575,16 @@ function renderPick() {
     wasComplete = done;
   };
 
-  const center = (fanSize - 1) / 2;
   Array.from({ length: fanSize }, (_, index) => {
     const card = document.createElement("button");
     card.className = "pick-card";
     card.type = "button";
-    const distance = index - center;
-    const angle = distance * 3.6;
-    const x = distance * 20;
-    const y = Math.abs(distance) * 2.2;
-    card.style.setProperty("--angle", `${angle}deg`);
-    card.style.setProperty("--x", `${x}px`);
-    card.style.setProperty("--y", `${y}px`);
+    const layout = fanCardLayout(index, fanSize, grid.clientWidth || 900);
+    card.style.setProperty("--angle", `${layout.angle}deg`);
+    card.style.setProperty("--x", `${layout.x}px`);
+    card.style.setProperty("--y", `${layout.y}px`);
     card.style.setProperty("--z", index);
-    card.setAttribute("aria-label", `扇形第 ${index + 1} 张`);
+    card.setAttribute("aria-label", `扇形第 ${index + 1} 张，共 ${fanSize} 张`);
     card.addEventListener("click", () => {
       const pickOrder = state.selectedSlots.indexOf(index);
       if (pickOrder !== -1) {
@@ -568,10 +605,13 @@ function renderPick() {
     });
     grid.append(card);
   });
+  applyFanLayout();
+  requestAnimationFrame(applyFanLayout);
+
   updatePickCount();
   body.querySelector("[data-back]").addEventListener("click", () => go("shuffle"));
   next.addEventListener("click", fetchReading);
-  return screen(panel("从牌堆中抽出你的牌", "桌面已铺好扇形，按顺序落入左侧牌位。", body, "5 / 5"));
+  return screen(panel("从牌堆中抽出你的牌", "整副牌已洗匀；扇形里每张背牌对应牌堆里的一个位置，你点哪里，就从哪里抽出。", body, "5 / 5"));
 }
 
 async function fetchReading() {
