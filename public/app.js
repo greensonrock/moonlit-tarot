@@ -36,6 +36,19 @@ const questions = {
   emotion: ["最近为什么总觉得很累？", "我该怎么让自己轻松一点？", "今天我的情绪想告诉我什么？"]
 };
 
+const CHAPTER_META = {
+  "现状": { bridge: "故事从这里开始。这张牌照见你此刻站的位置——", role: "起点" },
+  "阻碍": { bridge: "但牌也看见了一堵墙。真正卡住你的，就藏在这里——", role: "阻力" },
+  "建议": { bridge: "而牌给出的出口，在这片能量里——", role: "出口" },
+  "今日指引": { bridge: "你抽到的这一张，像一面镜子——", role: "镜子" },
+  "我": { bridge: "先看你自己。这张牌说的是你内在的状态——", role: "内在" },
+  "对方或外界": { bridge: "再看外界。这张牌指向你周围的影响——", role: "外界" },
+  "隐藏因素": { bridge: "还有一层你没完全看见的力量——", role: "暗流" },
+  "下一步": { bridge: "牌阵的最后一章，指向你可以迈出的一步——", role: "行动" }
+};
+
+const ACT_LABELS = ["第一章", "第二章", "第三章", "第四章"];
+
 const ritualLines = [
   "星月正在感应你的问题…",
   "牌阵开始对齐…",
@@ -527,7 +540,7 @@ function updateRevealGuide(wrap) {
   });
   if (next === -1) {
     if (guideEl) guideEl.textContent = "牌面已全部呈现。你可以静静感受每一张牌带来的讯息。";
-    if (hintEl) hintEl.textContent = "点击下方按钮，阅读 AI 为你写下的完整解读";
+    if (hintEl) hintEl.textContent = "点击下方按钮，听星月为你讲这盘牌阵故事";
     return;
   }
   const position = state.reading.cards[next].position;
@@ -636,7 +649,7 @@ function renderReveal() {
     <div class="actions reveal-actions">
       <button class="btn secondary" data-redraw>${actions.redraw}</button>
       <button class="btn secondary" data-newq>${actions.newQuestion}</button>
-      <button class="btn primary" data-report disabled>查看 AI 解读</button>
+      <button class="btn primary" data-report disabled>阅读牌阵故事</button>
     </div>
   `;
   const deck = wrap.querySelector(".reading-cards");
@@ -722,11 +735,10 @@ function renderReveal() {
 
 function renderReport() {
   const reading = state.reading;
-  const teaser = reportTeaser(reading);
   const actions = spreadActionLabels();
+  const story = collectStoryData(reading);
   const wrap = document.createElement("div");
   wrap.className = "shell report";
-  const cards = reading.cards.map((card) => `${card.position}：${card.name} ${card.orientation}`).join("<br>");
   const cardImages = reading.cards.map((card) => `
     <figure class="mini-card ${card.arcana === "大阿卡那" ? "is-major" : ""}">
       <img src="${card.image}" alt="${card.name} 卡面图">
@@ -736,16 +748,13 @@ function renderReport() {
   wrap.innerHTML = `
     <aside class="report-card" id="report-card">
       <p class="eyebrow">${reading.date}</p>
-      <h2>你的星月报告</h2>
+      <h2>星月报告</h2>
       <div class="mini-spread">${cardImages}</div>
       <div class="report-meta">
         <div class="meta-row"><span>问题</span><strong>${escapeHtml(reading.question)}</strong></div>
-        <div class="meta-row"><span>问题类型</span><strong>${escapeHtml(reading.questionProfile?.intent || "星月指引")}</strong></div>
         <div class="meta-row"><span>主题</span><strong>${reading.themeLabel}</strong></div>
-        <div class="meta-row"><span>牌面</span><strong>${cards}</strong></div>
-        <div class="meta-row"><span>今日关键词</span><strong>${reading.summary.keyword}</strong></div>
+        <div class="meta-row"><span>故事关键词</span><strong>${escapeHtml(story.headline)}</strong></div>
         <div class="meta-row"><span>幸运色</span><strong>${reading.summary.luckyColor}</strong></div>
-        <div class="meta-row"><span>温柔尝试</span><strong>${reading.summary.action}</strong></div>
       </div>
       <div class="actions report-loop">
         <button class="btn primary" data-save>保存结果</button>
@@ -754,34 +763,41 @@ function renderReport() {
         <button class="btn secondary" data-history>抽卡记录</button>
       </div>
     </aside>
-    <section class="summary panel">
+    <section class="summary panel story-panel">
       <div class="summary-head">
         <div>
-          <p class="eyebrow">AI Reading</p>
-          <h2>AI 为你整理的解读</h2>
+          <p class="eyebrow">Tarot Story</p>
+          <h2>牌阵故事</h2>
+          <p class="summary-subtitle">按你今晚抽到的顺序，星月为你讲一串完整的故事——从照见，到转折，再到可以带走的一步。</p>
         </div>
         ${readingSourceBadge(reading)}
       </div>
-      <article class="reward-reveal">
-        <p class="reward-label">✦ 牌面回应</p>
-        ${renderVisualTeaser(reading, teaser)}
-        <button class="btn primary" data-expand type="button">${state.reportExpanded ? "收起完整解读" : "展开图像化解读"}</button>
-      </article>
-      <div class="summary-detail ${state.reportExpanded ? "" : "is-collapsed"}">
-        ${renderVisualSummary(reading)}
-      </div>
+      ${renderTarotStory(reading)}
     </section>
   `;
   wrap.querySelector("[data-save]").addEventListener("click", saveResult);
   wrap.querySelector("[data-redraw]").addEventListener("click", redrawSameQuestion);
   wrap.querySelector("[data-newq]").addEventListener("click", resetAll);
   wrap.querySelector("[data-history]").addEventListener("click", () => go("history"));
-  wrap.querySelector("[data-expand]").addEventListener("click", () => {
-    state.reportExpanded = !state.reportExpanded;
-    app.innerHTML = "";
-    app.append(renderReport());
-  });
+  initStoryReveal(wrap);
   return screen(wrap);
+}
+
+function initStoryReveal(root) {
+  const nodes = root.querySelectorAll(".story-prologue, .story-chapter, .story-turn, .story-beat, .story-finale");
+  if (!nodes.length || !("IntersectionObserver" in window)) {
+    nodes.forEach((el) => el.classList.add("is-visible"));
+    return;
+  }
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("is-visible");
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+  nodes.forEach((el) => observer.observe(el));
 }
 
 function renderHistory() {
@@ -1004,118 +1020,178 @@ function renderVisualPositionCards(reading, sections) {
   `;
 }
 
-function renderVisualSummary(reading) {
+function stripPositionReading(text, card) {
+  let body = String(text || "").trim();
+  const prefix = new RegExp(`^${card.position}[·•][^：:]{0,28}[：:]\\s*`);
+  body = body.replace(prefix, "");
+  const namePrefix = new RegExp(`^${card.name}(（${card.orientation}）|${card.orientation}|正位|逆位)?[：:]\\s*`, "g");
+  body = body.replace(namePrefix, "").trim();
+  return body || card.shortHint || "";
+}
+
+function collectStoryData(reading) {
   const organized = organizeSummarySections(reading);
-  const hasAiStructure = Boolean(
-    organized.briefSummary
-    || organized.presentState
-    || organized.innerTheme
-    || organized.positionReadings.length
-    || organized.closingLine
-  );
+  const compact = reading.summary?.aiCompact || {};
+  const cards = reading.cards || [];
 
-  if (!hasAiStructure) {
-    return (reading.summary?.sections || []).map((section) => summarySection(section)).join("");
-  }
+  const positionMap = {};
+  organized.positionReadings.forEach((section) => {
+    const card = cardForSectionTitle(reading, section.title);
+    if (card) positionMap[card.position] = stripPositionReading(section.text, card);
+  });
+  (compact.positionReadings || []).forEach((item) => {
+    if (!positionMap[item.position]) {
+      const card = cards.find((c) => c.position === item.position);
+      positionMap[item.position] = card ? stripPositionReading(item.text, card) : item.text;
+    }
+  });
 
-  const remindersList = organized.reminders?.list
-    || (organized.reminders?.text ? [organized.reminders.text] : null);
-  const questionsList = organized.reflectionQuestions?.list
-    || (organized.reflectionQuestions?.text ? [organized.reflectionQuestions.text] : null);
-  const actionsList = organized.gentleActions?.list
-    || (organized.gentleActions?.text ? [organized.gentleActions.text] : null);
+  const chapters = cards.map((card, index) => {
+    const meta = CHAPTER_META[card.position] || { bridge: "这张牌在这个位置说——", role: card.position };
+    return {
+      act: ACT_LABELS[index] || `第${index + 1}章`,
+      card,
+      bridge: meta.bridge,
+      role: meta.role,
+      text: positionMap[card.position] || card.shortHint || "",
+      valence: inferCardValenceLabel(card)
+    };
+  });
 
+  return {
+    headline: compact.headline || reading.summary?.keyword || "星月指引",
+    mirror: organized.briefSummary?.text || compact.briefSummary || organized.presentState?.text || "",
+    presentState: organized.presentState?.text && !isSimilarSummaryCopy(organized.presentState.text, organized.briefSummary?.text || compact.briefSummary)
+      ? organized.presentState.text
+      : "",
+    chapters,
+    reframe: organized.innerTheme?.text || compact.innerTheme || "",
+    tension: organized.innerTension?.text || compact.innerTension || "",
+    reminders: organized.reminders?.list || compact.reminders || [],
+    questions: organized.reflectionQuestions?.list || compact.reflectionQuestions || [],
+    actions: organized.gentleActions?.list || compact.gentleActions || (reading.summary?.action ? [reading.summary.action] : []),
+    closing: organized.closingLine?.text || compact.closingLine || sectionText(reading, "最后想留给你的一句话") || "",
+    isSingle: cards.length === 1
+  };
+}
+
+function renderStoryCardMedia(card) {
+  const elemColor = ELEMENT_COLORS[card.element];
+  const style = elemColor ? ` style="--story-elem:${elemColor}"` : "";
   return `
-    <div class="visual-summary">
-      ${renderVisualJourney(reading)}
-      <div class="visual-summary__chips">
-        ${renderVisualChip("心情", moodLabel(reading.mood))}
-        ${renderVisualChip("主题", reading.themeLabel)}
-        ${renderVisualChip("关键词", reading.summary?.keyword)}
-        ${renderSpreadValenceChips(reading)}
-      </div>
-      <div class="visual-summary__grid">
-        ${organized.briefSummary ? renderVisualModule({
-          kind: "closing",
-          title: "浓缩总结",
-          text: organized.briefSummary.text,
-          emphasis: true
-        }) : ""}
-        ${!organized.briefSummary && organized.presentState ? renderVisualModule({
-          kind: "state",
-          title: organized.presentState.title,
-          text: organized.presentState.text
-        }) : ""}
-        ${organized.briefSummary && organized.presentState
-          && organized.presentState.text !== organized.briefSummary.text
-          && !isSimilarSummaryCopy(organized.presentState.text, organized.briefSummary.text)
-          ? renderVisualModule({
-          kind: "state",
-          title: "补充感受",
-          text: organized.presentState.text
-        }) : ""}
-        ${organized.innerTheme ? renderVisualModule({
-          kind: "theme",
-          title: organized.innerTheme.title,
-          text: organized.innerTheme.text
-        }) : ""}
-        ${remindersList?.length ? renderVisualModule({
-          kind: "reminders",
-          title: organized.reminders?.title || "这次抽卡给你的提醒",
-          list: remindersList
-        }) : ""}
-      </div>
-      ${renderVisualPositionCards(reading, organized.positionReadings)}
-      <div class="visual-summary__grid">
-        ${organized.innerTension ? renderVisualModule({
-          kind: "tension",
-          title: organized.innerTension.title,
-          text: organized.innerTension.text
-        }) : ""}
-        ${questionsList?.length ? renderVisualModule({
-          kind: "questions",
-          title: organized.reflectionQuestions?.title || "可以陪你想一想的问题",
-          list: questionsList
-        }) : ""}
-        ${actionsList?.length ? renderVisualModule({
-          kind: "actions",
-          title: organized.gentleActions?.title || "接下来你可以温柔地尝试",
-          list: actionsList
-        }) : ""}
-        ${organized.closingLine ? renderVisualModule({
-          kind: "closing",
-          title: organized.closingLine.title,
-          text: organized.closingLine.text,
-          emphasis: true
-        }) : ""}
-      </div>
-      ${organized.other.map((section) => summarySection(section)).join("")}
-    </div>
+    <figure class="story-chapter__card ${card.arcana === "大阿卡那" ? "is-major" : ""} ${card.orientation === "逆位" ? "is-reversed" : ""}"${style}>
+      <img src="${card.image}" alt="${escapeHtml(card.name)} ${card.orientation}">
+      <figcaption>
+        <span class="story-chapter__name">${escapeHtml(card.name)}</span>
+        <span class="story-chapter__orient">${escapeHtml(card.orientation)}</span>
+      </figcaption>
+    </figure>
   `;
 }
 
-function renderVisualTeaser(reading, teaser) {
+function renderStoryChapter(chapter, index) {
+  const { act, card, bridge, role, text, valence } = chapter;
+  const basis = [card.element ? `${card.element}元素` : "", card.numerologyStage || "", card.imagery || ""]
+    .filter(Boolean)
+    .join(" · ");
   return `
-    <div class="visual-teaser">
-      <div class="visual-teaser__keyword">
-        <span class="visual-teaser__glow" aria-hidden="true"></span>
-        <strong>${escapeHtml(teaser.keyword)}</strong>
-      </div>
-      ${teaser.brief ? `<p class="visual-brief">${escapeHtml(teaser.brief)}</p>` : ""}
-      ${renderVisualJourney(reading, { compact: true })}
-      ${!teaser.brief && teaser.summary ? `<p class="reward-summary">${escapeHtml(teaser.summary)}</p>` : ""}
-      ${teaser.action ? `
-        <div class="visual-action-pill">
-          <span class="visual-action-pill__icon" aria-hidden="true">↳</span>
-          <span>${escapeHtml(teaser.action)}</span>
+    <article class="story-chapter" style="--chapter-i:${index}">
+      <header class="story-chapter__head">
+        <span class="story-chapter__act">${act} · ${escapeHtml(card.position)}</span>
+        <span class="story-chapter__role">${escapeHtml(role)}</span>
+        <span class="story-chapter__valence is-${valence === "挑战" ? "challenge" : valence === "支持" ? "support" : "neutral"}">${valence}</span>
+      </header>
+      <div class="story-chapter__body">
+        ${renderStoryCardMedia(card)}
+        <div class="story-chapter__narrative">
+          <p class="story-chapter__bridge">${escapeHtml(bridge)}</p>
+          <p class="story-chapter__text">${escapeHtml(text)}</p>
+          ${basis ? `<p class="story-chapter__basis"><span>牌理</span>${escapeHtml(basis)}</p>` : ""}
         </div>
-      ` : ""}
-      <blockquote class="visual-closing-quote">
-        <span class="visual-closing-quote__mark" aria-hidden="true">✧</span>
-        ${escapeHtml(teaser.star)}
-      </blockquote>
-    </div>
+      </div>
+    </article>
   `;
+}
+
+function renderTarotStory(reading) {
+  const story = collectStoryData(reading);
+  const hasAi = Boolean(story.mirror || story.chapters.some((c) => c.text));
+
+  if (!hasAi) {
+    return (reading.summary?.sections || []).map((section) => summarySection(section)).join("");
+  }
+
+  return `
+    <article class="tarot-story" aria-label="牌阵故事解读">
+      <section class="story-prologue" style="--chapter-i:0">
+        <p class="story-prologue__eyebrow">序言 · 你带着这个问题来</p>
+        <blockquote class="story-prologue__question">「${escapeHtml(reading.question)}」</blockquote>
+        <p class="story-prologue__headline">${escapeHtml(story.headline)}</p>
+        ${story.mirror ? `<p class="story-prologue__mirror">${escapeHtml(story.mirror)}</p>` : ""}
+        ${story.presentState ? `<p class="story-prologue__feeling">${escapeHtml(story.presentState)}</p>` : ""}
+        ${renderVisualJourney(reading, { compact: true })}
+      </section>
+
+      <div class="story-spine" aria-hidden="true"></div>
+
+      <section class="story-chapters" aria-label="逐张牌叙事">
+        <p class="story-section-label">${story.isSingle ? "镜子 · 照见此刻" : "牌阵展开 · 按抽牌顺序"}</p>
+        ${story.chapters.map((ch, i) => renderStoryChapter(ch, i + 1)).join("")}
+      </section>
+
+      ${story.reframe ? `
+        <section class="story-turn" style="--chapter-i:${story.chapters.length + 1}">
+          <p class="story-section-label">转折 · 牌阵串起来</p>
+          <p class="story-turn__lead">真正的问题，也许不是表面那一个——</p>
+          <p class="story-turn__text">${escapeHtml(story.reframe)}</p>
+        </section>
+      ` : ""}
+
+      ${story.tension ? `
+        <section class="story-beat story-beat--tension" style="--chapter-i:${story.chapters.length + 2}">
+          <p class="story-beat__label">⇄ 内心的拉扯</p>
+          <p class="story-beat__text">${escapeHtml(story.tension)}</p>
+        </section>
+      ` : ""}
+
+      ${story.reminders?.length ? `
+        <section class="story-beat story-beat--signals" style="--chapter-i:${story.chapters.length + 3}">
+          <p class="story-beat__label">✦ 牌给的信号</p>
+          <ul class="story-signals">${story.reminders.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+        </section>
+      ` : ""}
+
+      <section class="story-finale" style="--chapter-i:${story.chapters.length + 4}">
+        <p class="story-section-label">尾声 · 可以带走什么</p>
+        ${story.actions?.length ? `
+          <ul class="story-actions">
+            ${story.actions.map((item, i) => `
+              <li>
+                <span class="story-actions__step">${i + 1}</span>
+                <span>${escapeHtml(item)}</span>
+              </li>
+            `).join("")}
+          </ul>
+        ` : ""}
+        ${story.questions?.length ? `
+          <div class="story-questions">
+            <p class="story-questions__label">? 牌师留问</p>
+            <ul>${story.questions.map((q) => `<li>${escapeHtml(q)}</li>`).join("")}</ul>
+          </div>
+        ` : ""}
+        ${story.closing ? `
+          <blockquote class="story-closing">
+            <span aria-hidden="true">✧</span>
+            ${escapeHtml(story.closing)}
+          </blockquote>
+        ` : ""}
+      </section>
+    </article>
+  `;
+}
+
+function renderVisualSummary(reading) {
+  return renderTarotStory(reading);
 }
 
 function summarySection(section) {
