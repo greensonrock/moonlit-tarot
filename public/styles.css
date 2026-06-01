@@ -67,6 +67,12 @@ button {
   justify-content: center;
 }
 
+.app:has(.table-session) {
+  width: min(100%, 1240px);
+  align-items: flex-start;
+  padding-top: max(16px, env(safe-area-inset-top));
+}
+
 .screen {
   width: 100%;
   animation: rise 420ms cubic-bezier(.2, .9, .2, 1);
@@ -360,18 +366,154 @@ textarea:focus {
   opacity: .52;
 }
 
+/* ── 桌面牌桌会话：洗牌 / 抽牌 / 翻牌 ── */
+.shell.table-session {
+  width: min(100%, 1180px);
+}
+
+.table-session__head {
+  margin-bottom: 16px;
+}
+
+.table-session__head .ask-banner {
+  margin-top: 12px;
+}
+
+.table-session__actions {
+  margin-top: 8px;
+}
+
+.table-surface {
+  position: relative;
+  border-radius: 28px;
+  padding: 24px 20px 20px;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 100%, rgba(45, 72, 52, .22), transparent 55%),
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 255, 255, .08), transparent 50%),
+    linear-gradient(165deg, #3d5c45 0%, #2f4a38 38%, #264032 100%);
+  border: 1px solid rgba(201, 155, 82, .35);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, .12),
+    inset 0 -8px 24px rgba(0, 0, 0, .18),
+    0 28px 64px rgba(38, 31, 53, .2);
+}
+
+.table-surface__rim {
+  position: absolute;
+  inset: 8px;
+  border-radius: 22px;
+  border: 1px solid rgba(201, 155, 82, .2);
+  pointer-events: none;
+}
+
 .shuffle-scene {
   display: grid;
-  place-items: center;
-  gap: 24px;
+  gap: 20px;
   text-align: center;
+}
+
+.shuffle-table {
+  display: grid;
+  place-items: center;
+  gap: 16px;
+  min-height: min(52vh, 420px);
+  padding-top: 28px;
+  padding-bottom: 28px;
+}
+
+.shuffle-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(100%, 360px);
+  z-index: 2;
+}
+
+.shuffle-progress__label {
+  color: rgba(255, 255, 255, .82);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+
+.shuffle-progress__track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .22);
+  overflow: hidden;
+}
+
+.shuffle-progress__fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--gold), #f0d9a8);
+  transition: width 80ms linear;
+}
+
+.shuffle-progress__pct {
+  color: #f0d9a8;
+  font-size: 13px;
+  font-weight: 800;
+  min-width: 2.5em;
+}
+
+.table-candle-hint {
+  margin: 0;
+  color: rgba(255, 255, 255, .55);
+  font-size: 13px;
+  font-style: italic;
+  z-index: 2;
 }
 
 .deck-stack {
   --charge: 0;
   position: relative;
-  width: min(52vw, 210px);
+  width: min(42vw, 240px);
   aspect-ratio: .615;
+  z-index: 2;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+
+.deck-stack:active {
+  cursor: grabbing;
+}
+
+.deck-riffle {
+  position: absolute;
+  inset: 4% 8%;
+  border-radius: 18px;
+  background: url("/assets/card-back.svg") center / cover;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.deck-stack.is-shuffling .deck-riffle--left {
+  opacity: .92;
+  transform: translateX(-28%) rotate(-14deg);
+}
+
+.deck-stack.is-shuffling .deck-riffle--right {
+  opacity: .92;
+  transform: translateX(28%) rotate(14deg);
+}
+
+.deck-stack.is-ready .stack-card {
+  animation: deckSettle 520ms cubic-bezier(.2, .9, .2, 1);
+}
+
+@keyframes deckSettle {
+  0% { transform: translateY(-8px) rotate(0deg); }
+  60% { transform: translateY(2px); }
+  100% { transform: rotate(calc((var(--i) - 2.5) * 4deg)) translateY(calc(var(--i) * -2px)); }
 }
 
 .deck-stack .stack-card {
@@ -381,12 +523,12 @@ textarea:focus {
   background-image: url("/assets/card-back.svg");
   background-size: cover;
   box-shadow: 0 24px 70px rgba(63, 46, 90, 0.28);
-  transform: rotate(calc((var(--i) - 2) * 5deg)) translateY(calc(var(--i) * -3px));
+  transform: rotate(calc((var(--i) - 2.5) * 4deg)) translateY(calc(var(--i) * -2px));
   transition: transform 240ms ease;
 }
 
 .deck-stack.charging .stack-card {
-  transform: rotate(calc((var(--i) - 2) * 13deg)) translateY(calc(var(--i) * -6px - var(--charge) * 20px));
+  transform: rotate(calc((var(--i) - 2.5) * 12deg)) translateY(calc(var(--i) * -5px - var(--charge) * 18px));
 }
 
 .hold-ring {
@@ -403,6 +545,115 @@ textarea:focus {
   color: var(--muted);
   font-size: 16px;
   line-height: 1.6;
+}
+
+/* ── 抽牌：扇形 + 牌堆 + 牌位落点 ── */
+.pick-stage {
+  display: grid;
+  gap: 14px;
+}
+
+.pick-hint strong {
+  color: #5f4a96;
+}
+
+.pick-deck-pile {
+  display: none;
+}
+
+.pick-table {
+  min-height: 360px;
+  padding-top: 12px;
+  padding-bottom: 16px;
+}
+
+.pick-table .pick-count {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, .88);
+  background: rgba(0, 0, 0, .2);
+  border-color: rgba(255, 255, 255, .15);
+}
+
+.pick-table .pick-count.is-complete {
+  color: #f0d9a8;
+  border-color: rgba(201, 155, 82, .45);
+  background: rgba(201, 155, 82, .18);
+}
+
+.pick-slots {
+  display: grid;
+  gap: 10px;
+}
+
+.pick-slots__title {
+  margin: 0;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+
+.pick-slots__grid {
+  display: grid;
+  gap: 8px;
+}
+
+.pick-slot {
+  display: grid;
+  grid-template-columns: 28px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px dashed rgba(141, 123, 211, .28);
+  background: rgba(255, 255, 255, .5);
+  transition: border-color 220ms ease, background 220ms ease, box-shadow 220ms ease;
+}
+
+.pick-slot.is-filled {
+  border-style: solid;
+  border-color: rgba(201, 155, 82, .42);
+  background: linear-gradient(135deg, rgba(201, 155, 82, .12), rgba(141, 123, 211, .08));
+  box-shadow: 0 8px 20px rgba(64, 48, 88, .08);
+}
+
+.pick-slot__order {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: #6f6478;
+  background: rgba(141, 123, 211, .12);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pick-slot.is-filled .pick-slot__order {
+  color: #fff;
+  background: linear-gradient(135deg, var(--gold), var(--rose));
+}
+
+.pick-slot__pos {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.pick-slot__card {
+  width: 44px;
+  aspect-ratio: .615;
+  border-radius: 8px;
+  background: url("/assets/card-back.svg") center / cover;
+  box-shadow: 0 6px 14px rgba(64, 48, 88, .16);
+  opacity: .35;
+}
+
+.pick-slot.is-filled .pick-slot__card {
+  opacity: 1;
+  outline: 2px solid rgba(201, 155, 82, .5);
 }
 
 .fan-table {
@@ -447,9 +698,14 @@ textarea:focus {
 
 .fan-deck {
   position: relative;
-  width: min(100%, 760px);
-  height: 330px;
+  width: min(100%, 900px);
+  height: 340px;
   margin: 0 auto;
+  z-index: 1;
+}
+
+.pick-table .fan-deck {
+  height: min(42vh, 380px);
 }
 
 .pick-card {
@@ -507,8 +763,115 @@ textarea:focus {
 .reveal-layout {
   display: grid;
   gap: 18px;
-  width: min(100%, 980px);
+  width: min(100%, 1180px);
   padding-bottom: 96px;
+}
+
+.reveal-stage {
+  display: grid;
+  gap: 16px;
+}
+
+.reveal-side {
+  padding: 20px 22px;
+}
+
+.reveal-main {
+  min-width: 0;
+}
+
+.reveal-table {
+  margin-top: 0;
+  min-height: min(58vh, 520px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 24px;
+}
+
+.reveal-side .reveal-guide {
+  margin-top: 14px;
+}
+
+.reveal-slot {
+  max-width: 280px;
+}
+
+.slot-reading {
+  width: 100%;
+  max-width: 280px;
+  margin-top: 4px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(141, 123, 211, .22);
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 12px 28px rgba(64, 48, 88, .1);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 480ms ease, transform 520ms cubic-bezier(.2, .9, .2, 1);
+}
+
+.slot-reading.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.slot-reading__label {
+  margin: 0 0 8px;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.slot-reading__text {
+  margin: 0;
+  color: #554d63;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.slot-reading__basis {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  color: #8a8094;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.slot-reading__basis span {
+  display: inline-block;
+  margin-right: 6px;
+  color: #a08fc4;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.card-keywords {
+  margin: 4px 0 0;
+  text-align: center;
+  color: #6f5bb0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.story-chapter__meta {
+  margin: 0 0 8px;
+  color: #6f6478;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.story-chapter__imagery {
+  margin: 10px 0 0;
+  color: #8a7fb0;
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.6;
 }
 
 .reveal-guide {
@@ -719,6 +1082,92 @@ textarea:focus {
   background: radial-gradient(circle, rgba(201, 155, 82, .34), transparent 70%);
   pointer-events: none;
   animation: burstRing 900ms ease both;
+}
+
+@media (min-width: 900px) {
+  .pick-stage {
+    grid-template-columns: 100px minmax(0, 1fr) minmax(150px, 200px);
+    align-items: stretch;
+    gap: 18px;
+  }
+
+  .pick-deck-pile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 24px;
+  }
+
+  .pick-deck-pile__stack {
+    position: relative;
+    width: 88px;
+    aspect-ratio: .615;
+  }
+
+  .pick-deck-pile__stack::before,
+  .pick-deck-pile__stack::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    background: url("/assets/card-back.svg") center / cover;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .25);
+  }
+
+  .pick-deck-pile__stack::before {
+    transform: rotate(-6deg) translateY(-4px);
+  }
+
+  .pick-deck-pile__stack::after {
+    transform: rotate(4deg) translateY(2px);
+  }
+
+  .pick-deck-pile__label {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .pick-table {
+    min-height: 440px;
+  }
+
+  .pick-table .fan-deck {
+    height: 400px;
+  }
+
+  .pick-card {
+    width: 102px;
+    left: calc(50% - 51px);
+  }
+
+  .reveal-stage {
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    align-items: start;
+    gap: 20px;
+  }
+
+  .reveal-table {
+    min-height: 560px;
+  }
+
+  .reveal-slot {
+    max-width: 300px;
+  }
+
+  .slot-reading {
+    max-width: 300px;
+  }
+
+  .shuffle-table {
+    min-height: 460px;
+  }
+
+  .deck-stack {
+    width: min(280px, 22vw);
+  }
 }
 
 /* 桌面牌阵：单张居中 */
@@ -2409,12 +2858,28 @@ textarea:focus {
   }
 
   .story-chapter__body {
-    grid-template-columns: 88px minmax(0, 1fr);
-    gap: 12px;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .story-chapter__card {
+    width: 120px;
   }
 
   .story-chapter__valence {
     margin-left: 0;
+  }
+
+  .pick-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .pick-slots__grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .reveal-stage {
+    grid-template-columns: 1fr;
   }
 
   .hero {

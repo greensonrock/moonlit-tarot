@@ -71,6 +71,30 @@ const state = {
 
 const spreadCount = () => ({ one: 1, three: 3, four: 4 }[state.spread] || 3);
 
+const SPREAD_POSITIONS = {
+  one: ["今日指引"],
+  three: ["现状", "阻碍", "建议"],
+  four: ["我", "对方或外界", "隐藏因素", "下一步"]
+};
+
+function spreadPositions() {
+  return SPREAD_POSITIONS[state.spread] || SPREAD_POSITIONS.three;
+}
+
+/** 某张牌位的完整解读正文（翻牌 / 故事章节共用） */
+function getPositionReadingFull(reading, index) {
+  const card = reading?.cards?.[index];
+  if (!card) return "";
+  const pr = reading.summary?.aiCompact?.positionReadings?.[index];
+  if (pr?.text) return stripPositionReading(pr.text, card);
+  const section = reading.summary?.sections?.find((s) => {
+    const t = s.title || "";
+    return t.startsWith(`${card.position}｜`) || t.startsWith(`${card.position}|`);
+  });
+  if (section?.text) return stripPositionReading(section.text, card);
+  return [card.shortHint, card.imagery, card.why].filter(Boolean).join(" ").trim();
+}
+
 function spreadActionLabels() {
   const single = state.spread === "one";
   return {
@@ -350,88 +374,158 @@ function renderSpread() {
 
 function renderShuffle() {
   const wrap = document.createElement("div");
-  wrap.className = "shell panel shuffle-scene";
+  wrap.className = "shell panel table-session shuffle-scene";
   wrap.innerHTML = `
-    <div>
-      <p class="eyebrow">Hold to Shuffle</p>
-      <h2>请想着你的问题，停留三秒</h2>
-      <p class="lede">当星光聚满，牌会准备好回应你。</p>
+    <header class="table-session__head">
+      <p class="eyebrow">星月牌桌 · 洗牌</p>
+      <h2>请想着你的问题，在牌桌上洗匀这副牌</h2>
+      <p class="lede">像真实占卜一样：按住牌堆来回搓洗，直到进度条聚满；也可以轻点「洗好了」。</p>
       ${askBanner()}
+    </header>
+    <div class="table-surface shuffle-table" aria-label="占卜桌面">
+      <div class="table-surface__rim" aria-hidden="true"></div>
+      <div class="shuffle-progress" aria-live="polite">
+        <span class="shuffle-progress__label">洗牌进度</span>
+        <span class="shuffle-progress__track"><span class="shuffle-progress__fill" data-shuffle-fill></span></span>
+        <span class="shuffle-progress__pct" data-shuffle-pct>0%</span>
+      </div>
+      <button class="deck-stack" type="button" aria-label="按住洗牌，搓动牌堆">
+        <span class="hold-ring"></span>
+        <span class="deck-riffle deck-riffle--left" aria-hidden="true"></span>
+        <span class="deck-riffle deck-riffle--right" aria-hidden="true"></span>
+        ${[0, 1, 2, 3, 4, 5].map((i) => `<span class="stack-card" style="--i:${i}"></span>`).join("")}
+      </button>
+      <p class="table-candle-hint">✦ 牌师低语：心越静，牌越诚实</p>
     </div>
-    <button class="deck-stack" aria-label="长按洗牌">
-      <span class="hold-ring"></span>
-      <span class="stack-card" style="--i:0"></span>
-      <span class="stack-card" style="--i:1"></span>
-      <span class="stack-card" style="--i:2"></span>
-      <span class="stack-card" style="--i:3"></span>
-    </button>
-    <p class="hint">长按牌堆，或点击下方按钮完成洗牌。</p>
-    <div class="actions">
+    <div class="actions table-session__actions">
       <button class="btn secondary" data-back>上一步</button>
-      <button class="btn primary" data-skip>开始抽牌</button>
+      <button class="btn primary" data-skip>洗好了，开始抽牌</button>
     </div>
   `;
 
   const deck = wrap.querySelector(".deck-stack");
+  const fill = wrap.querySelector("[data-shuffle-fill]");
+  const pct = wrap.querySelector("[data-shuffle-pct]");
   let timer = null;
   let start = 0;
+  let charge = 0;
+
+  const syncShuffleUi = (value) => {
+    charge = value;
+    deck.style.setProperty("--charge", value.toFixed(2));
+    if (fill) fill.style.width = `${Math.round(value * 100)}%`;
+    if (pct) pct.textContent = `${Math.round(value * 100)}%`;
+    deck.classList.toggle("is-shuffling", value > 0.05 && value < 1);
+    deck.classList.toggle("is-ready", value >= 1);
+  };
+
   const reset = () => {
     clearInterval(timer);
+    timer = null;
     deck.classList.remove("charging");
-    deck.style.setProperty("--charge", 0);
+    if (charge < 1) syncShuffleUi(Math.max(0, charge - 0.08));
   };
+
   const complete = () => {
-    reset();
-    toast("牌已经洗好，请抽出回应你的那几张。");
-    go("pick");
+    clearInterval(timer);
+    syncShuffleUi(1);
+    deck.classList.add("charging", "is-ready");
+    buzz([8, 20, 8]);
+    toast("牌已洗匀，请从扇形中选出回应你的牌 ✦");
+    setTimeout(() => go("pick"), 380);
   };
-  deck.addEventListener("pointerdown", () => {
+
+  deck.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
     start = Date.now();
     deck.classList.add("charging");
     timer = setInterval(() => {
-      const charge = Math.min(1, (Date.now() - start) / 1800);
-      deck.style.setProperty("--charge", charge.toFixed(2));
-      if (charge >= 1) complete();
+      const next = Math.min(1, (Date.now() - start) / 2200);
+      syncShuffleUi(next);
+      if (next >= 1) complete();
     }, 30);
   });
-  ["pointerup", "pointerleave", "pointercancel"].forEach((event) => deck.addEventListener(event, reset));
+  ["pointerup", "pointerleave", "pointercancel"].forEach((event) => {
+    deck.addEventListener(event, reset);
+  });
   wrap.querySelector("[data-skip]").addEventListener("click", complete);
   wrap.querySelector("[data-back]").addEventListener("click", () => {
     go(state.quickPath ? "question" : "spread");
   });
+  syncShuffleUi(0);
   return screen(wrap);
 }
 
 function renderPick() {
   state.selectedSlots = [];
+  const need = spreadCount();
+  const positions = spreadPositions();
   const body = document.createElement("div");
+  body.className = "table-session pick-session";
   body.innerHTML = `
-    ${askBanner()}
-    <div class="hint">牌已经洗好并摊成扇形。请在同一个界面里点选 ${spreadCount()} 张牌，抽中的牌会从牌阵里轻轻上浮。</div>
-    <div class="fan-table" aria-label="扇形塔罗牌阵">
-      <div class="pick-count" data-pick-count>已选择 <strong>0</strong> / ${spreadCount()}</div>
-      <div class="fan-deck"></div>
+    <header class="table-session__head">
+      ${askBanner()}
+      <p class="hint pick-hint">牌已洗匀，摊在桌面上。请凭直觉点选 <strong>${need}</strong> 张——第一眼被吸引的，往往最诚实。</p>
+    </header>
+    <div class="pick-stage">
+      <aside class="pick-deck-pile" aria-label="剩余牌堆">
+        <div class="pick-deck-pile__stack"></div>
+        <p class="pick-deck-pile__label">牌堆</p>
+      </aside>
+      <div class="table-surface pick-table" aria-label="扇形抽牌区">
+        <div class="table-surface__rim" aria-hidden="true"></div>
+        <div class="pick-count" data-pick-count>已选 <strong>0</strong> / ${need}</div>
+        <div class="fan-deck"></div>
+      </div>
+      <aside class="pick-slots" aria-label="牌位落点">
+        <p class="pick-slots__title">你的牌位</p>
+        <div class="pick-slots__grid" data-pick-slots></div>
+      </aside>
     </div>
-    <div class="actions">
+    <div class="actions table-session__actions">
       <button class="btn secondary" data-back>重新洗牌</button>
-      <button class="btn primary" data-next disabled>查看牌面</button>
+      <button class="btn primary" data-next disabled>确认选牌，开始解读</button>
     </div>
   `;
   const grid = body.querySelector(".fan-deck");
   const next = body.querySelector("[data-next]");
   const countWrap = body.querySelector("[data-pick-count]");
   const countLabel = body.querySelector(".pick-count strong");
-  const fanSize = 23;
+  const slotsGrid = body.querySelector("[data-pick-slots]");
+
+  const slotEls = positions.map((pos, orderIndex) => {
+    const el = document.createElement("div");
+    el.className = "pick-slot";
+    el.dataset.position = pos;
+    el.innerHTML = `
+      <span class="pick-slot__order">${orderIndex + 1}</span>
+      <span class="pick-slot__pos">${escapeHtml(pos)}</span>
+      <span class="pick-slot__card" aria-hidden="true"></span>
+    `;
+    slotsGrid.append(el);
+    return el;
+  });
+
+  const syncSlots = () => {
+    slotEls.forEach((el, i) => {
+      const filled = i < state.selectedSlots.length;
+      el.classList.toggle("is-filled", filled);
+      el.querySelector(".pick-slot__order").textContent = filled ? "✓" : String(i + 1);
+    });
+  };
+
+  const fanSize = 27;
   let wasComplete = false;
   const updatePickCount = () => {
-    const done = state.selectedSlots.length === spreadCount();
+    const done = state.selectedSlots.length === need;
     countLabel.textContent = state.selectedSlots.length;
     countWrap.classList.toggle("is-complete", done);
     next.disabled = !done;
+    syncSlots();
     if (done) {
       next.classList.add("pulse-ready");
       if (!wasComplete) {
-        toast("选好了！点击查看牌面 ✦");
+        toast("牌位已满，可以开始解读 ✦");
         buzz([8, 16, 8]);
       }
     } else {
@@ -439,32 +533,36 @@ function renderPick() {
     }
     wasComplete = done;
   };
+
+  const center = (fanSize - 1) / 2;
   Array.from({ length: fanSize }, (_, index) => {
     const card = document.createElement("button");
     card.className = "pick-card";
-    const center = (fanSize - 1) / 2;
+    card.type = "button";
     const distance = index - center;
-    const angle = distance * 4.2;
-    const x = distance * 18;
-    const y = Math.abs(distance) * 1.8;
+    const angle = distance * 3.6;
+    const x = distance * 20;
+    const y = Math.abs(distance) * 2.2;
     card.style.setProperty("--angle", `${angle}deg`);
     card.style.setProperty("--x", `${x}px`);
     card.style.setProperty("--y", `${y}px`);
     card.style.setProperty("--z", index);
-    card.setAttribute("aria-label", `第 ${index + 1} 张背面牌`);
+    card.setAttribute("aria-label", `扇形第 ${index + 1} 张`);
     card.addEventListener("click", () => {
-      if (card.classList.contains("selected")) {
+      const pickOrder = state.selectedSlots.indexOf(index);
+      if (pickOrder !== -1) {
         card.classList.remove("selected");
-        state.selectedSlots = state.selectedSlots.filter((item) => item !== index);
-      } else if (state.selectedSlots.length < spreadCount()) {
+        state.selectedSlots.splice(pickOrder, 1);
+      } else if (state.selectedSlots.length < need) {
         card.classList.add("selected", "just-picked");
         state.selectedSlots.push(index);
         setTimeout(() => card.classList.remove("just-picked"), 420);
         buzz(8);
       }
-      card.dataset.order = state.selectedSlots.indexOf(index) + 1 || "";
       grid.querySelectorAll(".pick-card").forEach((item, itemIndex) => {
-        item.dataset.order = state.selectedSlots.indexOf(itemIndex) + 1 || "";
+        const order = state.selectedSlots.indexOf(itemIndex);
+        item.dataset.order = order >= 0 ? order + 1 : "";
+        item.classList.toggle("selected", order >= 0);
       });
       updatePickCount();
     });
@@ -473,7 +571,7 @@ function renderPick() {
   updatePickCount();
   body.querySelector("[data-back]").addEventListener("click", () => go("shuffle"));
   next.addEventListener("click", fetchReading);
-  return screen(panel("抽出回应你的牌", "不要想太久，第一眼被吸引的那张，通常最诚实。", body, "5 / 5"));
+  return screen(panel("从牌堆中抽出你的牌", "桌面已铺好扇形，按顺序落入左侧牌位。", body, "5 / 5"));
 }
 
 async function fetchReading() {
@@ -521,11 +619,9 @@ function nextRevealIndex() {
   return state.revealed.findIndex((open) => !open);
 }
 
-/** 翻牌瞬间的「牌师低语」：取该牌位的真实解读，去掉重复的位置·牌名前缀 */
+/** 翻牌瞬间的「牌师低语」：完整牌位解读（不截断） */
 function cardWhisper(index) {
-  const pr = state.reading?.summary?.aiCompact?.positionReadings?.[index];
-  const raw = pr?.text || state.reading?.cards?.[index]?.shortHint || "";
-  return String(raw).replace(/^[^：:]{1,16}[：:]\s*/, "").trim();
+  return getPositionReadingFull(state.reading, index);
 }
 
 function updateRevealGuide(wrap) {
@@ -566,15 +662,19 @@ function flipRevealCard({ index, card, el, slot, wrap, reportButton, isMajor, is
     const allOpen = state.revealed.every(Boolean);
     reportButton.disabled = !allOpen;
 
+    const readingEl = slot.querySelector("[data-slot-reading]");
+    const readingText = cardWhisper(index);
+    if (readingEl && readingText) {
+      readingEl.querySelector("[data-slot-reading-text]").textContent = readingText;
+      readingEl.hidden = false;
+      readingEl.classList.add("is-visible");
+    }
     const whisperEl = wrap.querySelector("[data-whisper]");
-    if (whisperEl) {
-      const line = cardWhisper(index);
-      if (line) {
-        whisperEl.textContent = `牌师低语 · ${card.position}：${line}`;
-        whisperEl.classList.remove("show");
-        void whisperEl.offsetWidth;
-        whisperEl.classList.add("show");
-      }
+    if (whisperEl && readingText) {
+      whisperEl.textContent = `牌师解读 · ${card.position}`;
+      whisperEl.classList.remove("show");
+      void whisperEl.offsetWidth;
+      whisperEl.classList.add("show");
     }
     const glow = wrap.querySelector(".reveal-table-glow");
     const elemColor = ELEMENT_COLORS[card.element];
@@ -625,31 +725,36 @@ function renderReveal() {
     state.revealed = state.reading.cards.map(() => false);
   }
   const wrap = document.createElement("div");
-  wrap.className = `shell reveal-layout reveal-layout--${spreadId}`;
+  wrap.className = `shell table-session reveal-layout reveal-layout--${spreadId}`;
   wrap.innerHTML = `
-    <div class="panel reveal-intro">
-      <p class="eyebrow">Reveal</p>
-      <h2>${single ? "翻开这一张牌" : "逐张翻开今晚的牌"}</h2>
-      <p class="lede">${single
-    ? "带着你的问题，亲手翻开这一张。牌会像镜子一样照见你此刻的状态。"
-    : "像真实占卜桌面一样，由牌师引导你一张一张翻开。每张牌对应一个牌位，全部揭开后即可阅读完整解读。"}</p>
-      ${askBanner()}
-      <p class="reveal-guide" data-reveal-guide aria-live="polite"></p>
-      <div class="reveal-progress" aria-live="polite">
-        <span class="reveal-progress-label">已翻开 <strong data-revealed-count>0</strong> / ${total}</span>
-        <span class="reveal-progress-track" aria-hidden="true"><span class="reveal-progress-fill" data-reveal-fill></span></span>
+    <div class="reveal-stage">
+      <aside class="reveal-side panel">
+        <p class="eyebrow">星月牌桌 · 翻牌</p>
+        <h2>${single ? "翻开这一张" : "按牌位逐张翻开"}</h2>
+        <p class="lede">${single
+    ? "桌面只留一张。亲手翻开，牌师会在旁解读完整牌意。"
+    : "从左到右对应牌阵顺序。每次只翻一张，解读会完整呈现在牌下。"}</p>
+        ${askBanner()}
+        <p class="reveal-guide" data-reveal-guide aria-live="polite"></p>
+        <div class="reveal-progress" aria-live="polite">
+          <span class="reveal-progress-label">已翻开 <strong data-revealed-count>0</strong> / ${total}</span>
+          <span class="reveal-progress-track" aria-hidden="true"><span class="reveal-progress-fill" data-reveal-fill></span></span>
+        </div>
+      </aside>
+      <div class="reveal-main">
+        <div class="table-surface reveal-table">
+          <div class="table-surface__rim" aria-hidden="true"></div>
+          <div class="reveal-table-glow" aria-hidden="true"></div>
+          <div class="reading-cards reveal-deck reveal-deck--${spreadId}"></div>
+          <p class="reveal-table-hint">${single ? "轻触牌背，翻开今日指引" : "轻触高亮牌背，像在桌面上亲手翻开"}</p>
+          <p class="reveal-whisper" data-whisper aria-live="polite"></p>
+        </div>
       </div>
     </div>
-    <div class="reveal-table">
-      <div class="reveal-table-glow" aria-hidden="true"></div>
-      <div class="reading-cards reveal-deck reveal-deck--${spreadId}"></div>
-      <p class="reveal-table-hint">${single ? "轻触牌背，翻开今日指引" : "轻触尚未翻开的牌背"}</p>
-      <p class="reveal-whisper" data-whisper aria-live="polite"></p>
-    </div>
-    <div class="actions reveal-actions">
+    <div class="actions reveal-actions table-session__actions">
       <button class="btn secondary" data-redraw>${actions.redraw}</button>
       <button class="btn secondary" data-newq>${actions.newQuestion}</button>
-      <button class="btn primary" data-report disabled>阅读牌阵故事</button>
+      <button class="btn primary" data-report disabled>阅读完整牌阵故事</button>
     </div>
   `;
   const deck = wrap.querySelector(".reading-cards");
@@ -689,6 +794,11 @@ function renderReveal() {
     const elemColor = ELEMENT_COLORS[card.element];
     if (elemColor) el.style.setProperty("--elem-color", elemColor);
     el.setAttribute("aria-label", `${card.position}，${state.revealed[index] ? "已翻开" : "点击翻开"}`);
+    const basisLine = [card.element ? `${card.element}元素` : "", card.numerologyStage || "", card.imagery || ""]
+      .filter(Boolean)
+      .join(" · ");
+    const keywords = (card.keywords || []).slice(0, 3).join(" · ");
+
     el.innerHTML = `
       <div class="tarot-inner">
         <div class="face back">
@@ -700,12 +810,22 @@ function renderReveal() {
           <img class="card-image" src="${card.image}" alt="${card.name} ${card.nameEn} 卡面图" draggable="false">
           <h3 class="card-name">${escapeHtml(card.name)}</h3>
           <div class="orientation">${escapeHtml(card.orientation)}</div>
+          ${keywords ? `<p class="card-keywords">${escapeHtml(keywords)}</p>` : ""}
           ${card.element || card.numerologyStage ? `<div class="card-basis-tags">${card.element ? `<span class="card-basis-tag">${escapeHtml(card.element)}元素</span>` : ""}${card.numerologyStage ? `<span class="card-basis-tag">${escapeHtml(card.numerologyStage)}</span>` : ""}</div>` : ""}
-          <p class="card-hint">${escapeHtml(card.shortHint)}</p>
-          ${card.imagery ? `<p class="card-imagery">✦ ${escapeHtml(card.imagery)}</p>` : ""}
         </div>
       </div>
     `;
+
+    const readingPanel = document.createElement("div");
+    readingPanel.className = "slot-reading";
+    readingPanel.hidden = !state.revealed[index];
+    readingPanel.dataset.slotReading = "";
+    readingPanel.innerHTML = `
+      <p class="slot-reading__label">牌师解读 · ${escapeHtml(card.position)}</p>
+      <p class="slot-reading__text" data-slot-reading-text>${escapeHtml(getPositionReadingFull(state.reading, index))}</p>
+      ${basisLine ? `<p class="slot-reading__basis"><span>牌理</span>${escapeHtml(basisLine)}</p>` : ""}
+    `;
+    if (state.revealed[index]) readingPanel.classList.add("is-visible");
 
     const triggerFlip = (event) => {
       event.preventDefault();
@@ -719,7 +839,7 @@ function renderReveal() {
       triggerFlip(event);
     });
 
-    slot.append(label, el);
+    slot.append(label, el, readingPanel);
     deck.append(slot);
   });
 
@@ -1094,6 +1214,7 @@ function renderStoryChapter(chapter, index) {
   const basis = [card.element ? `${card.element}元素` : "", card.numerologyStage || "", card.imagery || ""]
     .filter(Boolean)
     .join(" · ");
+  const keywords = (card.keywords || []).slice(0, 4).join(" · ");
   return `
     <article class="story-chapter" style="--chapter-i:${index}">
       <header class="story-chapter__head">
@@ -1104,8 +1225,10 @@ function renderStoryChapter(chapter, index) {
       <div class="story-chapter__body">
         ${renderStoryCardMedia(card)}
         <div class="story-chapter__narrative">
+          <p class="story-chapter__meta">${escapeHtml(card.name)} · ${escapeHtml(card.orientation)}${keywords ? ` · ${escapeHtml(keywords)}` : ""}</p>
           <p class="story-chapter__bridge">${escapeHtml(bridge)}</p>
           <p class="story-chapter__text">${escapeHtml(text)}</p>
+          ${card.imagery ? `<p class="story-chapter__imagery">✦ ${escapeHtml(card.imagery)}</p>` : ""}
           ${basis ? `<p class="story-chapter__basis"><span>牌理</span>${escapeHtml(basis)}</p>` : ""}
         </div>
       </div>
