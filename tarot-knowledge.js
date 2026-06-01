@@ -276,8 +276,10 @@ export function composePositionReading(card, profile = {}) {
   }
 
   // 现状 / 我 / 今日指引
-  if (base === "challenge") {
-    return `你此刻处在「${lead}」里：${k.imagery}，${rev ? "这股能量还没顺畅落地" : "局面不算轻松"}，先看清再行动。`;
+  // 即使数字基线偏正，若关键词本身是痛苦/困顿，也不能用「可借的底子」这种支持语气
+  const painfulLead = CHALLENGE_LEXICON.test(lead) || CHALLENGE_LEXICON.test(facetWords);
+  if (base === "challenge" || painfulLead) {
+    return `你此刻处在「${lead}」里：${k.imagery}，${rev ? "这股能量还没顺畅落地" : "并不轻松"}，先承认它，再看清下一步。`;
   }
   if (base === "support") {
     return `你此刻有「${lead}」可借：${k.imagery}，是当下能把握的底子，但别跳过核实。`;
