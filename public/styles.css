@@ -68,7 +68,7 @@ button {
 }
 
 .app:has(.table-session) {
-  width: min(100%, 1240px);
+  width: min(100%, 1040px);
   align-items: flex-start;
   padding-top: max(16px, env(safe-area-inset-top));
 }
@@ -368,7 +368,7 @@ textarea:focus {
 
 /* ── 桌面牌桌会话：洗牌 / 抽牌 / 翻牌 ── */
 .shell.table-session {
-  width: min(100%, 1180px);
+  width: min(100%, 980px);
 }
 
 .table-session__head {
@@ -388,21 +388,20 @@ textarea:focus {
   border-radius: 28px;
   padding: 24px 20px 20px;
   background:
-    radial-gradient(ellipse 90% 70% at 50% 100%, rgba(45, 72, 52, .22), transparent 55%),
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 255, 255, .08), transparent 50%),
-    linear-gradient(165deg, #3d5c45 0%, #2f4a38 38%, #264032 100%);
-  border: 1px solid rgba(201, 155, 82, .35);
+    radial-gradient(ellipse 72% 48% at 50% 88%, rgba(201, 155, 82, .14), transparent 68%),
+    linear-gradient(180deg, rgba(255, 255, 255, .82), rgba(244, 237, 249, .58));
+  border: 1px solid var(--line);
   box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, .12),
-    inset 0 -8px 24px rgba(0, 0, 0, .18),
-    0 28px 64px rgba(38, 31, 53, .2);
+    inset 0 1px 0 rgba(255, 255, 255, .78),
+    0 22px 56px rgba(64, 48, 88, .08);
+  overflow: hidden;
 }
 
 .table-surface__rim {
   position: absolute;
-  inset: 8px;
+  inset: 10px;
   border-radius: 22px;
-  border: 1px solid rgba(201, 155, 82, .2);
+  border: 1px solid rgba(201, 155, 82, .16);
   pointer-events: none;
 }
 
@@ -430,7 +429,7 @@ textarea:focus {
 }
 
 .shuffle-progress__label {
-  color: rgba(255, 255, 255, .82);
+  color: var(--muted);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: .06em;
@@ -441,7 +440,7 @@ textarea:focus {
   flex: 1;
   height: 6px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, .22);
+  background: rgba(141, 123, 211, .14);
   overflow: hidden;
 }
 
@@ -450,12 +449,12 @@ textarea:focus {
   width: 0;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--gold), #f0d9a8);
+  background: linear-gradient(90deg, var(--violet), var(--rose), var(--gold));
   transition: width 80ms linear;
 }
 
 .shuffle-progress__pct {
-  color: #f0d9a8;
+  color: #5f4a96;
   font-size: 13px;
   font-weight: 800;
   min-width: 2.5em;
@@ -463,7 +462,7 @@ textarea:focus {
 
 .table-candle-hint {
   margin: 0;
-  color: rgba(255, 255, 255, .55);
+  color: var(--muted);
   font-size: 13px;
   font-style: italic;
   z-index: 2;
@@ -551,6 +550,7 @@ textarea:focus {
 .pick-stage {
   display: grid;
   gap: 14px;
+  align-items: stretch;
 }
 
 .pick-hint strong {
@@ -562,24 +562,113 @@ textarea:focus {
 }
 
 .pick-table {
-  min-height: 360px;
-  padding-top: 12px;
-  padding-bottom: 16px;
+  position: relative;
+  min-height: 300px;
+  max-height: 360px;
+  padding: 14px 12px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
 }
 
 .pick-table .pick-count {
   position: relative;
-  z-index: 2;
-  margin-bottom: 8px;
-  color: rgba(255, 255, 255, .88);
-  background: rgba(0, 0, 0, .2);
-  border-color: rgba(255, 255, 255, .15);
+  z-index: 4;
+  margin-bottom: 6px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, .78);
+  border-color: var(--line);
 }
 
 .pick-table .pick-count.is-complete {
-  color: #f0d9a8;
-  border-color: rgba(201, 155, 82, .45);
-  background: rgba(201, 155, 82, .18);
+  color: #5f4a96;
+  border-color: rgba(141, 123, 211, .34);
+  background: linear-gradient(135deg, rgba(141, 123, 211, .14), rgba(216, 120, 164, .1));
+}
+
+.fan-deck-meta {
+  position: relative;
+  z-index: 4;
+  margin: 0 auto 8px;
+  max-width: 34em;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.fan-deck {
+  position: relative;
+  width: 100%;
+  max-width: 860px;
+  flex: 1;
+  min-height: 220px;
+  max-height: 280px;
+  margin: 0 auto;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.pick-card {
+  --card-w: 84px;
+  --scale: 1;
+  position: absolute;
+  left: calc(50% - var(--card-w) / 2);
+  bottom: 16px;
+  width: var(--card-w);
+  aspect-ratio: .615;
+  border: 0;
+  border-radius: 14px;
+  background: url("/assets/card-back.svg") center / cover;
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, .35) inset,
+    0 10px 22px rgba(64, 48, 88, .14);
+  cursor: pointer;
+  transform: translateX(var(--x)) translateY(var(--y)) rotate(var(--angle)) scale(var(--scale));
+  transform-origin: 50% 130%;
+  transition: transform 200ms cubic-bezier(.2, .9, .2, 1), filter 200ms ease, box-shadow 200ms ease;
+}
+
+.pick-card:hover {
+  transform: translateX(var(--x)) translateY(calc(var(--y) - 12px)) rotate(var(--angle)) scale(calc(var(--scale) + 0.03));
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, .35) inset,
+    0 16px 28px rgba(64, 48, 88, .18);
+}
+
+.pick-card.selected {
+  transform: translateX(var(--x)) translateY(calc(var(--y) - 36px)) rotate(var(--angle)) scale(calc(var(--scale) + 0.05));
+  filter: drop-shadow(0 0 12px rgba(201, 155, 82, .45));
+}
+
+.pick-card::after {
+  content: attr(data-order);
+  position: absolute;
+  top: -9px;
+  right: -8px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: white;
+  background: linear-gradient(135deg, var(--gold), var(--rose));
+  box-shadow: 0 8px 18px rgba(120, 75, 99, .22);
+  font-size: 13px;
+  font-weight: 800;
+  opacity: 0;
+  transform: scale(.8);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.pick-card.just-picked {
+  filter: drop-shadow(0 0 16px rgba(201, 155, 82, .55));
+}
+
+.pick-card.selected::after {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .pick-slots {
@@ -692,104 +781,10 @@ textarea:focus {
   animation: completePulse 1.8s ease-in-out infinite;
 }
 
-.pick-card.just-picked {
-  filter: drop-shadow(0 0 18px rgba(201, 155, 82, .72));
-}
-
-.fan-deck {
-  position: relative;
-  width: min(100%, 900px);
-  height: 340px;
-  margin: 0 auto;
-  z-index: 1;
-}
-
-.pick-table .fan-deck {
-  height: min(42vh, 380px);
-}
-
-.fan-deck-meta {
-  position: relative;
-  z-index: 2;
-  margin: 0 auto 6px;
-  max-width: 36em;
-  text-align: center;
-  color: rgba(255, 255, 255, .72);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.fan-deck[data-fan-size="78"] .pick-card,
-.fan-deck[data-fan-size="56"] .pick-card {
-  width: 76px;
-  left: calc(50% - 38px);
-}
-
-.fan-deck[data-fan-size="78"] {
-  height: min(46vh, 400px);
-}
-
-.fan-deck[data-fan-size="78"] .pick-card {
-  width: 64px;
-  left: calc(50% - 32px);
-}
-
-.pick-card {
-  position: absolute;
-  left: calc(50% - 47px);
-  bottom: 28px;
-  width: 94px;
-  aspect-ratio: .615;
-  border: 0;
-  border-radius: 14px;
-  background: url("/assets/card-back.svg") center / cover;
-  box-shadow: 0 12px 26px rgba(64, 48, 88, 0.18);
-  cursor: pointer;
-  z-index: var(--z);
-  transform: translateX(var(--x)) translateY(var(--y)) rotate(var(--angle));
-  transform-origin: 50% 150%;
-  transition: transform 170ms ease, filter 170ms ease;
-}
-
-.pick-card::after {
-  content: attr(data-order);
-  position: absolute;
-  top: -9px;
-  right: -8px;
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  color: white;
-  background: linear-gradient(135deg, var(--gold), var(--rose));
-  box-shadow: 0 8px 18px rgba(120, 75, 99, .22);
-  font-size: 13px;
-  font-weight: 800;
-  opacity: 0;
-  transform: scale(.8);
-  transition: opacity 160ms ease, transform 160ms ease;
-}
-
-.pick-card:hover {
-  transform: translateX(var(--x)) translateY(calc(var(--y) - 14px)) rotate(var(--angle));
-}
-
-.pick-card.selected {
-  z-index: 80;
-  transform: translateX(var(--x)) translateY(calc(var(--y) - 42px)) rotate(var(--angle)) scale(1.04);
-  filter: drop-shadow(0 0 14px rgba(201, 155, 82, .58));
-}
-
-.pick-card.selected::after {
-  opacity: 1;
-  transform: scale(1);
-}
-
 .reveal-layout {
   display: grid;
   gap: 18px;
-  width: min(100%, 1180px);
+  width: min(100%, 980px);
   padding-bottom: 96px;
 }
 
@@ -807,13 +802,23 @@ textarea:focus {
 }
 
 .reveal-table {
+  position: relative;
   margin-top: 0;
-  min-height: min(58vh, 520px);
+  min-height: min(52vh, 480px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  padding-bottom: 24px;
+  padding: 28px 22px 24px;
+  border-radius: 28px;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(ellipse 72% 48% at 50% 88%, rgba(201, 155, 82, .14), transparent 68%),
+    linear-gradient(180deg, rgba(255, 255, 255, .82), rgba(244, 237, 249, .58));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .78),
+    0 22px 56px rgba(64, 48, 88, .08);
+  overflow: hidden;
 }
 
 .reveal-side .reveal-guide {
@@ -954,21 +959,6 @@ textarea:focus {
 
 .reveal-layout.reveal-complete .reveal-progress-fill {
   animation: progressGlow 1.4s ease-in-out infinite;
-}
-
-.reveal-table {
-  position: relative;
-  margin-top: 4px;
-  padding: 28px 22px 20px;
-  border-radius: 28px;
-  border: 1px solid var(--line);
-  background:
-    radial-gradient(ellipse 72% 48% at 50% 88%, rgba(201, 155, 82, .2), transparent 68%),
-    linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,.34));
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.72),
-    0 22px 56px rgba(64, 48, 88, .1);
-  overflow: hidden;
 }
 
 .reveal-table-glow {
@@ -1138,7 +1128,7 @@ textarea:focus {
     inset: 0;
     border-radius: 12px;
     background: url("/assets/card-back.svg") center / cover;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, .25);
+    box-shadow: 0 10px 22px rgba(64, 48, 88, .14);
   }
 
   .pick-deck-pile__stack::before {
@@ -1157,30 +1147,13 @@ textarea:focus {
   }
 
   .pick-table {
-    min-height: 440px;
+    min-height: 320px;
+    max-height: 340px;
   }
 
-  .pick-table .fan-deck {
-    height: 420px;
-  }
-
-  .fan-deck[data-fan-size="78"] {
-    height: 440px;
-  }
-
-  .pick-card {
-    width: 102px;
-    left: calc(50% - 51px);
-  }
-
-  .fan-deck[data-fan-size="78"] .pick-card {
-    width: 70px;
-    left: calc(50% - 35px);
-  }
-
-  .fan-deck[data-fan-size="56"] .pick-card {
-    width: 82px;
-    left: calc(50% - 41px);
+  .fan-deck {
+    max-height: 260px;
+    min-height: 240px;
   }
 
   .reveal-stage {
@@ -2954,22 +2927,16 @@ textarea:focus {
   }
 
   .fan-deck {
-    height: 280px;
-  }
-
-  .pick-card {
-    left: calc(50% - 38px);
-    bottom: 20px;
-    width: 76px;
-    transform: translateX(calc(var(--x) * .66)) translateY(var(--y)) rotate(var(--angle));
+    min-height: 200px;
+    max-height: 240px;
   }
 
   .pick-card:hover {
-    transform: translateX(calc(var(--x) * .66)) translateY(calc(var(--y) - 10px)) rotate(var(--angle));
+    transform: translateX(calc(var(--x) * 0.94)) translateY(calc(var(--y) - 10px)) rotate(var(--angle)) scale(calc(var(--scale) + 0.03));
   }
 
   .pick-card.selected {
-    transform: translateX(calc(var(--x) * .66)) translateY(calc(var(--y) - 34px)) rotate(var(--angle)) scale(1.04);
+    transform: translateX(calc(var(--x) * 0.94)) translateY(calc(var(--y) - 32px)) rotate(var(--angle)) scale(calc(var(--scale) + 0.05));
   }
 
   .reveal-table {

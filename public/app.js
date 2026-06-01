@@ -81,26 +81,36 @@ function spreadPositions() {
   return SPREAD_POSITIONS[state.spread] || SPREAD_POSITIONS.three;
 }
 
-/** 整副塔罗 78 张；扇形展示张数随桌面宽度增加（非固定 27） */
+/** 整副塔罗 78 张；扇形仅展示可点选的一层，逻辑仍映射整副牌堆 */
 const FULL_DECK_SIZE = 78;
+const FAN_VISIBLE_MAX = 32;
 
-function computeFanSize() {
-  const w = window.innerWidth;
-  if (w >= 1200) return FULL_DECK_SIZE;
-  if (w >= 960) return 56;
-  if (w >= 640) return 42;
-  return 34;
+function computeFanSize(containerWidth = window.innerWidth) {
+  const w = containerWidth || window.innerWidth;
+  let size = 18;
+  if (w >= 1100) size = 32;
+  else if (w >= 820) size = 26;
+  else if (w >= 560) size = 22;
+  return Math.min(FAN_VISIBLE_MAX, size);
 }
 
-function fanCardLayout(index, fanSize, containerWidth = 900) {
+function fanCardLayout(index, fanSize, containerWidth = 720) {
   const center = (fanSize - 1) / 2;
   const distance = index - center;
-  const arcDeg = Math.min(172, 48 + fanSize * 1.55);
-  const angle = fanSize > 1 ? distance * (arcDeg / (fanSize - 1)) : 0;
-  const spreadPx = Math.min(containerWidth * 0.9, 20 + fanSize * 10.5);
-  const x = center > 0 ? distance * (spreadPx / center) : 0;
-  const y = Math.abs(distance) * (1.2 + fanSize * 0.035);
-  return { angle, x, y };
+  const maxDist = Math.max(center, 1);
+  const norm = distance / maxDist;
+
+  const arcDeg = Math.min(112, 28 + fanSize * 2.4);
+  const angle = norm * (arcDeg / 2);
+  const spreadPx = Math.min(containerWidth * 0.44, 52 + fanSize * 8);
+  const x = norm * spreadPx;
+  const y = Math.pow(Math.abs(norm), 1.35) * (6 + fanSize * 0.28);
+
+  const cardW = Math.round(Math.max(48, Math.min(86, (containerWidth * 0.9) / (fanSize * 0.68))));
+  const z = fanSize - Math.abs(distance);
+  const scale = 1 - Math.abs(norm) * 0.07;
+
+  return { angle, x, y, z, cardW, scale };
 }
 
 /** 某张牌位的完整解读正文（翻牌 / 故事章节共用） */
@@ -542,18 +552,19 @@ function renderPick() {
   let wasComplete = false;
 
   const applyFanLayout = () => {
-    const w = grid.clientWidth || window.innerWidth;
+    const w = grid.clientWidth || Math.min(window.innerWidth - 48, 860);
     const meta = body.querySelector("[data-fan-meta]");
     if (meta) {
-      meta.textContent = fanSize >= FULL_DECK_SIZE
-        ? `扇形摊开整副 ${FULL_DECK_SIZE} 张背牌 · 点选位置决定抽到哪张`
-        : `扇形摊开 ${fanSize} 张背牌（整副 ${FULL_DECK_SIZE} 张已洗入牌堆）· 点选位置决定抽到哪张`;
+      meta.textContent = `扇形 ${fanSize} 张可点选 · 整副 ${FULL_DECK_SIZE} 张已洗入牌堆 · 凭直觉点选位置`;
     }
     grid.querySelectorAll(".pick-card").forEach((card, index) => {
-      const { angle, x, y } = fanCardLayout(index, fanSize, w);
-      card.style.setProperty("--angle", `${angle}deg`);
-      card.style.setProperty("--x", `${x}px`);
-      card.style.setProperty("--y", `${y}px`);
+      const layout = fanCardLayout(index, fanSize, w);
+      card.style.setProperty("--angle", `${layout.angle}deg`);
+      card.style.setProperty("--x", `${layout.x}px`);
+      card.style.setProperty("--y", `${layout.y}px`);
+      card.style.setProperty("--scale", layout.scale.toFixed(3));
+      card.style.setProperty("--card-w", `${layout.cardW}px`);
+      card.style.zIndex = card.classList.contains("selected") ? "120" : String(layout.z);
       card.setAttribute("aria-label", `扇形第 ${index + 1} 张，共 ${fanSize} 张`);
     });
   };
@@ -579,11 +590,13 @@ function renderPick() {
     const card = document.createElement("button");
     card.className = "pick-card";
     card.type = "button";
-    const layout = fanCardLayout(index, fanSize, grid.clientWidth || 900);
+    const layout = fanCardLayout(index, fanSize, 720);
     card.style.setProperty("--angle", `${layout.angle}deg`);
     card.style.setProperty("--x", `${layout.x}px`);
     card.style.setProperty("--y", `${layout.y}px`);
-    card.style.setProperty("--z", index);
+    card.style.setProperty("--scale", layout.scale.toFixed(3));
+    card.style.setProperty("--card-w", `${layout.cardW}px`);
+    card.style.zIndex = String(layout.z);
     card.setAttribute("aria-label", `扇形第 ${index + 1} 张，共 ${fanSize} 张`);
     card.addEventListener("click", () => {
       const pickOrder = state.selectedSlots.indexOf(index);
@@ -600,6 +613,11 @@ function renderPick() {
         const order = state.selectedSlots.indexOf(itemIndex);
         item.dataset.order = order >= 0 ? order + 1 : "";
         item.classList.toggle("selected", order >= 0);
+        if (order >= 0) item.style.zIndex = "120";
+        else {
+          const l = fanCardLayout(itemIndex, fanSize, grid.clientWidth || 720);
+          item.style.zIndex = String(l.z);
+        }
       });
       updatePickCount();
     });
