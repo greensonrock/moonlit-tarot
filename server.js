@@ -4,9 +4,18 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildCompactFallback, generateAiSummary, mergeAiSummary } from "./ai-reading.js";
-import { drawCardsBySelection, drawCardsFromDeck, getDrawConfig, pickRandom } from "./draw-random.js";
+import { cardReadingText, READING_SYNTHESIS_VERSION } from "./reading-synthesis.js";
+import {
+  drawCardsBySelection,
+  drawCardsFromDeck,
+  drawCardsFromTopPicks,
+  getDrawConfig,
+  isTopPickDraw,
+  pickRandom
+} from "./draw-random.js";
 import { getTarotStats, tarotDeck } from "./tarot-data.js";
 import { describeCardWhy, getCardKnowledge } from "./tarot-knowledge.js";
+import { analyzeQuestion, inferMoodFromQuestion, inferThemeFromQuestion } from "./public/question-profile.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -57,14 +66,23 @@ const moodHints = {
   release: "你想放下某件事，但真正难的也许是承认它曾经对你很重要。"
 };
 
-async function drawReading({ theme, mood, question, spread, selectedSlots }) {
+async function drawReading({ theme, mood, question, spread, selectedSlots, drawMode }) {
   const positions = spreadPositions[spread] || spreadPositions.three;
-  const questionProfile = analyzeQuestion(question, theme);
+  const q = question?.trim() || "";
+  const effectiveTheme = theme || inferThemeFromQuestion(q);
+  const effectiveMood = mood || inferMoodFromQuestion(q);
+  const questionProfile = analyzeQuestion(q || "我现在最需要看见什么？", effectiveTheme);
+  const alignedTheme = questionProfile.dominantTheme || effectiveTheme;
   const drawConfig = getDrawConfig();
-  // 建议2：用户点选位置真正决定抽到的牌；无点选时回退随机抽顶牌
-  const drawn = Array.isArray(selectedSlots) && selectedSlots.length
-    ? drawCardsBySelection(deck, positions.length, selectedSlots, drawConfig)
-    : drawCardsFromDeck(deck, positions.length, drawConfig);
+  const useTopPick =
+    drawMode === "top"
+    || drawMode === "fan"
+    || isTopPickDraw(selectedSlots, positions.length);
+  const drawn = useTopPick
+    ? drawCardsFromTopPicks(deck, positions.length, selectedSlots, drawConfig)
+    : Array.isArray(selectedSlots) && selectedSlots.length
+      ? drawCardsBySelection(deck, positions.length, selectedSlots, drawConfig)
+      : drawCardsFromDeck(deck, positions.length, drawConfig);
   const cards = drawn.map(({ card, reversed }, index) => {
     const position = positions[index];
     const drawnCard = {
@@ -82,22 +100,32 @@ async function drawReading({ theme, mood, question, spread, selectedSlots }) {
     drawnCard.shortHint = reversed
       ? `逆位：${knowledge?.shadow || "这股能量还没顺畅落地"}，值得认真看一眼。`
       : (card.actionHint || knowledge?.light || "");
-    return {
-      ...drawnCard,
-      analysis: analyzeCardForQuestion(drawnCard, questionProfile, index, positions.length)
-    };
+    return drawnCard;
   });
+
+  const readingCtx = {
+    question: q || "我现在最需要看见什么？",
+    theme: alignedTheme,
+    themeLabel: themeLabels[alignedTheme] || themeLabels[effectiveTheme] || "心动与关系",
+    mood: effectiveMood,
+    questionProfile,
+    cards
+  };
+
+  for (const card of cards) {
+    card.analysis = cardReadingText(card, readingCtx).slice(0, 140);
+  }
 
   const reading = {
     date: new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(new Date()),
-    theme,
-    themeLabel: themeLabels[theme] || "心动与关系",
-    mood,
-    question: question?.trim() || "我现在最需要看见什么？",
+    theme: alignedTheme,
+    themeLabel: themeLabels[alignedTheme] || themeLabels[effectiveTheme] || "心动与关系",
+    mood: effectiveMood,
+    question: q || "我现在最需要看见什么？",
     spread,
     cards,
     questionProfile,
-    summary: buildSummary({ theme, mood, question, cards, questionProfile }),
+    summary: buildSummary({ theme: alignedTheme, mood: effectiveMood, question: q, cards, questionProfile }),
     aiPowered: false
   };
 
@@ -119,149 +147,6 @@ async function drawReading({ theme, mood, question, spread, selectedSlots }) {
   }
 
   return reading;
-}
-
-/**
- * 问题意图判定（建议5）：从「命中即真」升级为「主题优先 + 加权计分」。
- * - 用户选定的 theme 拥有最高权重，避免「结果/坚持」等通用词误判领域。
- * - 强信号词（offer、复合、放下…）加分，弱/通用词（结果、坚持…）只微调，
- *   且只有在没有明确主题时才足以改变领域归属。
- */
-function analyzeQuestion(question = "", theme = "relationship") {
-  const text = question.trim() || "我现在最需要看见什么？";
-
-  // 每个领域：强信号（+3）、弱信号（+1）
-  const domainSignals = {
-    relationship: { strong: ["复合", "暧昧", "表白", "前任", "喜欢我", "对我的感觉", "这段关系", "在一起"], weak: ["他", "她", "ta", "对方", "喜欢", "爱", "关系", "主动", "联系", "心动"] },
-    career: { strong: ["offer", "录用", "入职", "离职", "跳槽", "面试", "升职", "工作机会", "这份工作"], weak: ["工作", "职业", "事业", "老板", "同事", "岗位", "项目", "坚持"] },
-    emotion: { strong: ["焦虑到", "撑不住", "情绪崩", "睡不着", "很疲惫"], weak: ["累", "焦虑", "难过", "情绪", "疲惫", "压力", "烦"] },
-    self: { strong: ["重新喜欢自己", "成为自己", "自我成长", "走不出来"], weak: ["自己", "成长", "内在", "改变", "自信", "修复"] },
-    future: { strong: ["未来三个月", "接下来会", "发展方向", "该选哪个", "前景"], weak: ["未来", "发展", "方向", "趋势"] }
-  };
-
-  const scoreDomain = (key) => {
-    const sig = domainSignals[key];
-    let s = theme === key ? 5 : 0; // 用户选定主题：最高权重
-    for (const w of sig.strong) if (text.includes(w)) s += 3;
-    for (const w of sig.weak) if (text.includes(w)) s += 1;
-    return s;
-  };
-
-  const scores = {
-    relationship: scoreDomain("relationship"),
-    career: scoreDomain("career"),
-    emotion: scoreDomain("emotion"),
-    self: scoreDomain("self"),
-    future: scoreDomain("future")
-  };
-
-  const isDecision = ["该不该", "要不要", "是否", "选择", "继续", "放弃", "离开", "留下", "还是"].some((w) => text.includes(w));
-  const isRelease = ["放下", "走出来", "忘记", "释怀", "翻篇"].some((w) => text.includes(w));
-
-  // 主导领域：取最高分；并列时按主题 > 关系 > 职业 > 情绪 > 自我 > 未来 的稳定顺序
-  const order = ["relationship", "career", "emotion", "self", "future"];
-  let dominant = order[0];
-  for (const key of order) {
-    if (scores[key] > scores[dominant]) dominant = key;
-  }
-  if (scores[dominant] === 0) dominant = theme in scores ? theme : "future";
-
-  const isRelationship = dominant === "relationship";
-  const isCareer = dominant === "career";
-  const isEmotion = dominant === "emotion";
-  const isSelf = dominant === "self";
-  // 未来：仅当显式未来词或主题为 future，或问题是抉择且无其他强领域
-  const isFuture = dominant === "future" || theme === "future"
-    || (isDecision && scores.relationship + scores.career + scores.emotion + scores.self === 0);
-
-  let intent = "自我确认";
-  if (isRelationship && isDecision) intent = "关系里的选择";
-  else if (isRelationship) intent = "关系确认";
-  else if (isCareer && isDecision) intent = "工作去留";
-  else if (isCareer) intent = "职业方向";
-  else if (isRelease) intent = "放下与释怀";
-  else if (isEmotion) intent = "情绪修复";
-  else if (isFuture || isDecision) intent = "未来选择";
-  else if (isSelf) intent = "自我成长";
-
-  const subject = isRelationship
-    ? "你在意的那个人或这段关系"
-    : isCareer
-      ? "这份工作和你的价值感"
-      : isEmotion
-        ? "你最近的情绪状态"
-        : "你正在面对的选择";
-
-  const coreNeed = isRelationship
-    ? "确定感、稳定行动和被认真对待"
-    : isCareer
-      ? "价值回报、成长空间和可持续的节奏"
-      : isEmotion
-        ? "被理解、被休息允许和重新找回能量"
-        : isRelease
-          ? "从旧牵挂里收回注意力"
-          : "更清楚地知道自己想靠近什么";
-
-  const caution = isRelationship
-    ? "不要把猜测当成证据，也不要用试探代替表达"
-    : isCareer
-      ? "不要只用忍耐衡量努力，也不要在疲惫时做极端决定"
-      : isEmotion
-        ? "不要把所有情绪都解释成自己不够好"
-        : "不要为了马上安心而匆忙锁死答案";
-
-  return { text, intent, subject, coreNeed, caution, isRelationship, isCareer, isDecision, isEmotion, isRelease, isFuture };
-}
-
-function analyzeCardForQuestion(card, profile, index, total) {
-  const keywordText = card.keywords.join("、");
-  const direction = card.orientation === "逆位"
-    ? `以逆位出现，说明「${keywordText}」这股能量暂时没有顺畅流动。`
-    : `以正位出现，说明「${keywordText}」这股能量正在比较清楚地显现。`;
-  const role = card.position === "建议" || card.position === "下一步"
-    ? `放在「${card.position}」，它更像是在告诉你下一步怎么把主动权拿回来。`
-    : card.position === "阻碍" || card.position === "隐藏因素"
-      ? `放在「${card.position}」，它指向这个问题里容易被忽略、但正在影响你判断的部分。`
-      : `放在「${card.position}」，它先描述这件事当前最明显的能量。`;
-  const focus = profile.isRelationship
-    ? relationshipCardFocus(card, profile)
-    : profile.isCareer
-      ? careerCardFocus(card, profile)
-      : profile.isEmotion
-        ? emotionCardFocus(card, profile)
-        : generalCardFocus(card, profile);
-  const ending = index === total - 1
-    ? `所以这张牌给你的出口不是立刻求一个结论，而是${card.actionHint}。`
-    : `这会影响你接下来如何理解${profile.subject}。`;
-
-  return `${role}${card.name}${direction}${focus}${ending}`;
-}
-
-function relationshipCardFocus(card, profile) {
-  if (card.suitKey === "cups") return `放回你的问题里，它更关心真实感受是否被好好表达，而不只是暧昧里的情绪起伏。`;
-  if (card.suitKey === "swords") return `放回你的问题里，它提醒你分清事实、想象和对方真实说出口的部分。`;
-  if (card.suitKey === "pentacles") return `放回你的问题里，它更看重对方有没有稳定、具体、可持续的行动。`;
-  if (card.suitKey === "wands") return `放回你的问题里，它说明吸引力和主动性存在，但也要看热度能不能变成稳定靠近。`;
-  return `放回你的问题里，它触碰的是${profile.coreNeed}，不是单纯的喜欢或不喜欢。`;
-}
-
-function careerCardFocus(card, profile) {
-  if (card.suitKey === "pentacles") return `放回你的问题里，它直接指向现实回报、成长空间和安全感。`;
-  if (card.suitKey === "wands") return `放回你的问题里，它更关心你还有没有热情、野心和继续推进的动力。`;
-  if (card.suitKey === "swords") return `放回你的问题里，它提醒你用事实、沟通和规划来判断，而不是只凭一时疲惫。`;
-  if (card.suitKey === "cups") return `放回你的问题里，它说明情绪体验和团队氛围已经影响你的判断。`;
-  return `放回你的问题里，它指向你和这份工作之间更深层的阶段课题。`;
-}
-
-function emotionCardFocus(card, profile) {
-  if (card.orientation === "逆位") return `放回你的问题里，它像是在说你有一部分感受已经被压住太久，需要先被看见。`;
-  return `放回你的问题里，它不是要求你马上振作，而是提醒你找到能恢复能量的小入口。`;
-}
-
-function generalCardFocus(card, profile) {
-  if (profile.isDecision) return `放回你的问题里，它提醒你把选择拆成代价、期待和真实行动，而不是只问对错。`;
-  if (profile.isRelease) return `放回你的问题里，它更像在帮助你辨认：什么还值得保留，什么已经只是在消耗你。`;
-  return `放回你的问题里，它让答案更贴近你真正需要的${profile.coreNeed}。`;
 }
 
 function buildSummary({ theme, mood, question, cards, questionProfile }) {
@@ -399,6 +284,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, {
         status: "ok",
         service: "moonlit-tarot",
+        synthesisVersion: READING_SYNTHESIS_VERSION,
         aiEnabled: Boolean(process.env.DMXAPI_KEY),
         model: process.env.DMXAPI_MODEL || null,
         draw: {
@@ -449,11 +335,15 @@ server.listen(port, host, () => {
   } else {
     console.log("AI reading: template only (set DMXAPI_KEY in .env)");
   }
-  for (const iface of Object.values(os.networkInterfaces())) {
-    for (const addr of iface ?? []) {
-      if (addr.family === "IPv4" && !addr.internal) {
-        console.log(`  LAN access: http://${addr.address}:${port}`);
+  try {
+    for (const iface of Object.values(os.networkInterfaces())) {
+      for (const addr of iface ?? []) {
+        if (addr.family === "IPv4" && !addr.internal) {
+          console.log(`  LAN access: http://${addr.address}:${port}`);
+        }
       }
     }
+  } catch {
+    // In some sandboxed environments, enumerating interfaces may fail; localhost is still valid.
   }
 });
