@@ -59,7 +59,10 @@ for (const [label, reading, pattern] of CASES) {
   const fb = buildGentleFallback(reading);
   const checks = {
     hasSystem: typeof prompt.system === "string" && prompt.system.includes("directVerdict"),
-    hasFloorSection: prompt.user.includes("牌理推理地板"),
+    hasContract: prompt.user.includes("解读契约"),
+    hasAiPrimary: prompt.system.includes("positionReadings 由你亲自撰写"),
+    hasStrongJudgment: /强判断|明确立场/.test(prompt.system + prompt.user),
+    hasPsychDepth: /配得感|内在课题/.test(prompt.system),
     floorInPrompt: prompt.user.includes(floor.slice(0, 20)),
     hasDomainIntent: prompt.user.includes("解读域/意图"),
     alignsFallback: pattern.test(fb.directVerdict),

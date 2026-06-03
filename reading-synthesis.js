@@ -12,7 +12,7 @@ import {
   inferActions
 } from "./reading-knowledge.js";
 
-export const READING_SYNTHESIS_VERSION = "20260604e";
+export const READING_SYNTHESIS_VERSION = "20260605b";
 
 export { inferQuestionContext, interpretCardInContext, cardReadingText };
 

@@ -5,6 +5,16 @@ import {
   getCardKnowledge
 } from "./tarot-knowledge.js";
 import { buildFewShotBrief } from "./reading-fewshots.js";
+import {
+  intentGuidanceBlock,
+  addressesQuestion,
+  hasDomainLeak,
+  presentStateFallback,
+  innerTensionFallback,
+  closingLineFallback,
+  reflectionQuestionsFallback,
+  isGenericReflection
+} from "./reading-contract.js";
 import { buildModelStrategyBrief } from "./reading-strategy.js";
 import {
   buildSpreadVerdict,
@@ -142,7 +152,26 @@ function orientTone(card) {
 
 const EVASIVE_VERDICT = /别急着下结论|不必今天想通|把问题推回|顺其自然|答案会自己浮现|不用靠猜|别拼命追问|先稳住节奏|成绩就在那|不急着判断|再等等就好|先别慌/;
 
-const VERDICT_LEAN_MARKERS = /偏|倾向|更像|适合|宜|不宜|可以|暂缓|值得|先看|先缓|支持|谨慎|不宜|值得|可先|别急着|小步|验证|靠近|开口|主动|推进|放下|离开|等待|评估|有温度|未说透/;
+const VERDICT_LEAN_MARKERS = /偏|倾向|更像|适合|宜|不宜|可以|暂缓|值得|先看|先缓|支持|谨慎|可先|别急着|小步|验证|靠近|开口|主动|推进|放下|离开|等待|评估|有温度|未说透|不是|仍在|尚未|明确|不建议|别用|窗口|一锤定音|没黄|没戏|偏淡|偏有|宜先|不宜猛|要先|还在|更像|更偏/;
+
+const PSYCH_THEME_MARKERS = /价值|配得|害怕|许可|不够|认真|被选择|被对待|脑补|否定|配不配|底层|真正在问|其实是|不是.*而是|配得到|值得被|在等什么|读成|误读|自我|内在|课题|镜子|监控|猜代替|确定感|核实|空等|silence|没消息|不够好/;
+
+function isCrisisQuestion(question = "") {
+  return /不想活|想死|自杀|自伤|伤害自己|活不下去|撑不住|受不了|绝望/.test(String(question || ""));
+}
+
+function crisisPromptBlock(reading) {
+  if (!isCrisisQuestion(reading.question)) return "";
+  return `【危机边界 · 最高优先级】
+用户可能处于高强度痛苦或自伤风险。请：
+- directVerdict：先验证感受真实且很重，不做命运预测、不写具体结果；
+- gentleActions：第一条优先建议联系身边可信的人或当地紧急求助，第二条才是微小自我照顾；
+- 禁止「会好的」「命中注定」「答案会浮现」等轻飘收束。`;
+}
+
+function hasPsychologicalDepth(text) {
+  return PSYCH_THEME_MARKERS.test(String(text || ""));
+}
 
 function stripVerdictPrefix(text) {
   return String(text || "")
@@ -347,6 +376,7 @@ function questionFocusHint(reading) {
   const sig = questionSignals(reading);
   const positions = (reading.cards || []).map((c) => c.position).join("、");
   const lines = [
+    intentGuidanceBlock(reading),
     buildModelStrategyBrief(reading),
     moodResponseHint(reading),
     `【问题类型】${p.intent || "自我确认"}；用户真正关心：${p.subject || "自己"}；此刻最需要：${p.coreNeed || "被看见"}。`
@@ -360,6 +390,10 @@ function questionFocusHint(reading) {
     lines.push(`【牌位顺序】${positions}。reminders 共 ${Math.min(reading.cards.length, 3)} 条，严格按此顺序，每条对应一张牌，句式不可雷同。`);
   }
 
+  lines.push(`【强判断 · 必守】
+directVerdict 第一句必须是明确立场（倾向/阶段/宜否/温度），禁止「可能」「也许」「还在观察中」作首句主调；第二句起依次用现状/阻碍/建议三牌作证据，每张至少点一次牌名或牌位。
+innerTheme 必须落到内在课题（配得感/害怕什么/在等什么许可），禁止只复述牌面关键词。
+reflectionQuestions 两条须扣本盘牌面与用户原话，禁止通用模板；第一条会作为「牌师追问」展示。`);
   lines.push(`【读者视角 · 必守】你是直接对用户说话的牌师，全文第二人称「你」。先回应用户原问题的字面意思，再用牌佐证；禁止「用户」「牌显示」「塔罗告诉你」等旁观或算命腔。positionReadings 每条开头先扣用户问题半句再解牌。`);
   lines.push(`【模块绑牌 · 必守 · 去重复 · 如实】
 各模块分工不同，禁止把同一段话换个标题重复粘贴：
@@ -367,7 +401,8 @@ function questionFocusHint(reading) {
 - presentState：感受 + 一句结论（≤55字），不写牌名；结论须与牌阵基调一致（有挑战牌时不得只报喜）。
 - innerTheme：三牌因果链一句（≤56字），把现状→阻碍→建议串成同一主线、并让建议回扣现状那股劲，可含阻力词，不重复 briefSummary。
 - reminders：2-3 条便签（每条≤18字），用关键词；挑战牌可写「阻滞/消耗/延迟」类词。
-- positionReadings：唯一详细解牌处（50-68字）；挑战牌写清卡点，支持牌写清助力；结构「如实 + 温柔」。
+- positionReadings：唯一详细解牌处（50-68字）；结合意象与用户问题，像牌师口述；挑战牌写清卡点，支持牌写清助力。
+- descriptionLayer / situationLayer / meaningLayer：四层故事各写一层，禁止与 directVerdict 同句复读。
 - innerTension：心理拉扯（≤48字），可承认担心合理，不复述牌面。
 - closingLine：短收束（≤32字）；可温暖，但不得否定前文已点出的挑战。
 - 口语化：像深夜语音，少用「暗示/迹象/投入度/疏离」等报告腔。`);
@@ -471,65 +506,19 @@ function presentStateFromVerdict(reading) {
 }
 
 function groundPresentState(reading) {
-  const sig = questionSignals(reading);
   const embrace = (moodEmbraceLines[reading.mood] || "我懂你在意。").replace(/。$/, "");
-  const now = cardByPosition(reading.cards, "现状", "今日指引", "我") || reading.cards?.[0];
-  const k0 = now ? contextualFacetWord(now, reading) || now.keywords?.[0] : "";
-  const valence = cardValence(now);
-  const lens = inferQuestionContext(reading);
   const verdictLead = presentStateFromVerdict(reading);
+  return presentStateFallback(reading, embrace, verdictLead);
+}
 
-  if ((lens.domain === "career" && /offer|面试/.test(reading.question || "")) || lens.intent === "outcome_forecast" && /offer|面试|录用/.test(reading.question || "")) {
-    return `${embrace}。offer 仍在评估窗，先分清已确认事实与纯担心。`;
-  }
-  if (lens.intent === "partner_attitude" || sig.asksOtherFeeling) {
-    if (verdictLead) return `${embrace}。${verdictLead}。`;
-    if (valence === "challenge") {
-      return `${embrace}。就ta的心意，牌看偏淡${k0 ? `，${k0}是信号` : ""}，别靠猜。`;
-    }
-    if (valence === "support") {
-      return `${embrace}。牌看有温度${k0 ? `（${k0}）` : ""}，但还需要真实互动验证。`;
-    }
-    return `${embrace}。心意还在辨认期，用互动验证比脑补更接近答案。`;
-  }
-  if (sig.choice) {
-    const { a, b } = sig.choice;
-    return `${embrace}。你要在「${a}」与「${b}」之间分辨——牌说卡点往往不在选项本身，而是你还不敢为选择负责。`;
-  }
-  if (sig.asksOffer && sig.asksWhenWhere) {
-    if (valence === "challenge") {
-      return `${embrace}。offer 何时何地仍不明，${k0 || "流程"}上有阻滞要先核实。`;
-    }
-    return `${embrace}。时间地点还在评估窗，先把事实和担心分开。`;
-  }
-  if (sig.asksOffer) {
-    if (valence === "challenge") {
-      return `${embrace}。工作上${k0 || "仍有卡点"}，别在焦虑里催结果。`;
-    }
-    return `${embrace}。仍在观望/评估期，分清事实和担心。`;
-  }
-  if (sig.asksFuture && !isCareerQuestion(reading)) {
-    if (valence === "challenge") {
-      return `${embrace}。牌先看${k0 || "现实卡点"}，别在「值不值」里反复耗。`;
-    }
-    return `${embrace}。未来还在展开，先把标准与需要分开想。`;
-  }
-  if (lens.domain === "emotion" || lens.intent === "emotion_regulation") {
-    if (/失眠|睡不着|凌晨/.test(reading.question || "")) {
-      return `${embrace}。身体在拉警报——今晚先求睡，不必把人生想完。`;
-    }
-    if (verdictLead) return `${embrace}。${verdictLead}。`;
-    return `${embrace}。感受需要被看见，我们再谈怎么办。`;
-  }
-  if (lens.intent === "yes_no_decision" && /主动|要不要|该不该/.test(reading.question || "")) {
-    if (verdictLead) return `${embrace}。${verdictLead}。`;
-    return `${embrace}。牌在看表达方式，不在否定你在意。`;
-  }
-  if (lens.domain === "self" || lens.intent === "self_clarity") {
-    if (verdictLead) return `${embrace}。${verdictLead}。`;
-    return `${embrace}。你在向内找答案，这本身就是在照顾自己。`;
-  }
-  return `${embrace}。牌在帮你看清局面，我们先从一小步开始。`;
+function groundInnerTension(reading) {
+  return innerTensionFallback(reading);
+}
+
+function groundClosingLine(reading) {
+  const advice = cardByPosition(reading.cards, "建议", "下一步", "今日指引") || reading.cards?.[0];
+  const lead = advice ? cardFacetWord(advice, reading) : "";
+  return closingLineFallback(reading, lead);
 }
 
 /** 取一张牌「此刻最贴切的那个面」：按问题语境选 facet，避免机械取 keywords[0] */
@@ -543,48 +532,6 @@ function cardFacetWord(card, reading) {
 
 function groundInnerTheme(reading) {
   return clampSentenceClean(buildSpreadInnerTheme(reading), 72);
-}
-
-function groundInnerTension(reading) {
-  const sig = questionSignals(reading);
-  if (sig.asksOtherFeeling) {
-    return "你想靠近确认，又怕主动会打破平衡——这很正常。";
-  }
-  if (sig.choice) {
-    return "既怕选错了浪费机会，又怕不选就一直耗在原地——这很正常。";
-  }
-  if (sig.asksOffer) {
-    return "你想快点有结果，又怕选错——这份慎重挺珍贵。";
-  }
-  if (inferQuestionContext(reading).domain === "emotion") {
-    return "你想快点好起来，又怕一放松就更失控——这很正常。";
-  }
-  if (sig.asksFuture && !isCareerQuestion(reading)) {
-    return "你想尽快看清方向，又怕一旦选错就回不了头——这很正常。";
-  }
-  return "你想看清答案，又怕一旦投入就难以回头——这很正常。";
-}
-
-function groundClosingLine(reading) {
-  const sig = questionSignals(reading);
-  const advice = cardByPosition(reading.cards, "建议", "下一步", "今日指引") || reading.cards?.[0];
-  const lead = advice ? cardFacetWord(advice, reading) : "";
-  if (sig.choice) {
-    return "把现实条件摆清楚，答案会比你以为的更早浮现。";
-  }
-  if (sig.asksOffer) {
-    return "先核对硬条件，再谈时机——别让等待替你做决定。";
-  }
-  if (sig.asksOtherFeeling) {
-    return "用一次真实互动确认，比反复猜更靠近答案。";
-  }
-  if (sig.asksShouldIDo || /主动|要不要|该不该/.test(reading.question || "")) {
-    return "把主动收成一句低压表达，比连环试探更接近答案。";
-  }
-  if (lead && !/谣言|中伤|报复|冷酷|专横/.test(lead)) {
-    return `朝「${lead}」迈出具体一步，方向会随行动清楚起来。`;
-  }
-  return "把方向落成一个动作，比反复想更快带你靠近答案。";
 }
 
 function groundHeadline(reading) {
@@ -814,42 +761,55 @@ function buildPromptPayload(reading, { strictJson = false } = {}) {
   const ctx = inferQuestionContext(reading);
   const choice = detectChoiceOptions(reading.question);
   const cardsText = (reading.cards || []).map((card) => formatCardForPrompt(card, p)).join("\n\n");
-  const synthesisFloor = stripVerdictPrefix(buildSpreadVerdict(reading));
+  const synthesisReference = stripVerdictPrefix(buildSpreadVerdict(reading));
+  const cardReferenceHints = (reading.cards || [])
+    .map((card) => `- ${card.position}·${card.name}：${cardReadingText(card, reading)}`)
+    .join("\n");
 
   const jsonNote = strictJson
     ? "\n【重要】上次输出不是合法 JSON。本次只输出一个 JSON 对象，不要 Markdown，不要解释，字符串内不要用换行。"
     : "";
 
+  const crisisBlock = crisisPromptBlock(reading);
+
   return {
-    system: `你是「星月少女塔罗馆」的 AI 塔罗牌师。解读由你根据【用户消息中的情境策略 + 牌面输入】推理完成，不要套用固定话术模板。
+    system: `你是「星月少女塔罗馆」的 AI 塔罗牌师。整篇解读由你根据【用户问题 + 牌面 + 情境策略】推理完成——你是主解读者，不是规则模板的复读机。
 
 原则（简要）：
-- 贴牌、贴用户原问题；全文「你」；先给强判断再解牌。
-- directVerdict 必写：第一句直接答字面问题（倾向/阶段/温度/宜否），第二句起用牌位+牌名作依据；禁止「就你问的…」套话开头；禁止逃避作答。
-- 荣格式觉察：牌是象征镜子；innerTheme 做重新框定（工作/生活困境 → 内在课题）。
+- 贴牌、贴用户原问题；全文「你」；先给强判断，再展开每张牌与可执行小步。
+- directVerdict 必写：第一句必须是明确立场/倾向/阶段/宜否（强判断），第二句起用牌位+牌名作依据；禁止「就你问的…」套话开头；禁止逃避作答。
+- positionReadings 由你亲自撰写（50-68字/条）：结合牌面意象、正逆位、牌位透镜与用户原问题，像牌师口述；可参考下方牌理提示整合进自然语言，禁止整句照抄规则模板。
+- descriptionLayer / situationLayer / meaningLayer：四层故事由你写，各层角度不同，禁止与 directVerdict 同句复读。
+- 荣格式觉察：innerTheme 把表层问题重框到内在课题（配得感/害怕什么/在等什么许可），不复述牌名。
 - 禁止：算命腔、保证结果、具体日期、「别急着下结论」「不必今天想通」逃避作答。
-- 详细解牌只在 positionReadings；briefSummary 与 directVerdict 同方向。
-- 【P5】positionReadings 由本地 Interpret(P|Q,L,C) 引擎注入；你仍可在 JSON 中填写，但服务端会以引擎为准。请把精力放在 directVerdict / innerTheme / gentleActions 与牌理地板对齐。
+${crisisBlock ? `\n${crisisBlock}` : ""}
 
 【输出】仅一个合法 JSON 对象：${jsonNote}
 {
-  "directVerdict": "≤95字强制判断：先倾向后牌证，勿以就你问的开头",
+  "directVerdict": "≤95字强判断：首句明确立场，再牌证；勿以就你问的开头",
   "headline": "8-12字点题",
   "briefSummary": "45-80字如实浓缩",
   "presentState": "≤55字，感受+结论",
-  "innerTheme": "≤56字重新框定/觉察(把表层问题拉到真正课题)",
+  "descriptionLayer": "≤72字描述层：牌面看见什么、与问题的关系",
+  "situationLayer": "≤72字情境层：放进用户生活/work情境",
+  "meaningLayer": "≤56字意义层：这件事对用户意味着什么",
+  "innerTheme": "≤56字重新框定：须含内在课题(价值/配得/害怕/许可)",
   "reminders": ["0-3条便签"],
   "innerTension": "≤48字心理拉扯",
-  "reflectionQuestions": ["恰好2个"],
+  "reflectionQuestions": ["恰好2个，须扣本盘牌面与原问"],
   "gentleActions": ["恰好2条"],
   "closingLine": "≤32字短收束",
   "positionReadings": [{"position":"牌位","cardName":"牌名","text":"50-68字"}]
 }`,
     user: `${questionFocusHint(reading)}
+${crisisBlock}
 
-【牌理推理地板 · 必对齐】
-本地引擎已根据「${ctx.intentLabel || ctx.intent}」合参，结论如下。你的 directVerdict 须与此同方向、同倾向（可修辞优化，不可推翻）：
-「${synthesisFloor}」
+【牌理参考 · 整合进解读，勿照抄】
+本地引擎合参倾向（${ctx.intentLabel || ctx.intent}），供你对齐方向、用自己的话重写：
+「${synthesisReference}」
+
+分牌参考（可吸收语义，须改写成自然解读）：
+${cardReferenceHints}
 
 【用户问题】${reading.question}
 ${choice ? choiceHint(reading.question) : ""}
@@ -1109,42 +1069,8 @@ function ensureSelfCareAction(actions, reading) {
   return list.slice(0, 2).map((item) => clampText(item, 42));
 }
 
-function questionAnchors(reading) {
-  const q = String(reading.question || "");
-  const sig = questionSignals(reading);
-  const anchors = [];
-  if (sig.asksOffer) anchors.push("offer", "机会", "工作", "面试", "岗位", "录用");
-  if (sig.asksInterview) {
-    anchors.push("面试", "二面", "消息", "没消息", "等消息", "评估", "流程");
-  }
-  if (sig.asksWhenWhere) anchors.push("时间", "什么时候", "哪里", "地方", "城市", "深圳", "上海");
-  if (sig.asksOtherFeeling) anchors.push("对方", "他", "她", "喜欢", "态度", "心意");
-  if (sig.asksShouldIDo) anchors.push("该不该", "要不要", "继续", "放弃", "离开");
-  if (sig.asksEmotion) anchors.push("情绪", "焦虑", "累", "压力", "难过");
-  if (sig.choice) anchors.push(sig.choice.a, sig.choice.b);
-  const hits = anchors.filter((w) => w && q.includes(w));
-  if (hits.length) return hits;
-  return [trimQuestion(q).slice(0, 8)].filter((w) => w.length >= 2);
-}
-
 function addressesUserQuestion(text, reading) {
-  const body = String(text || "");
-  const sig = questionSignals(reading);
-  const anchors = questionAnchors(reading);
-  if (anchors.some((w) => body.includes(w))) return true;
-  if (sig.asksWhenWhere && /阶段|窗口|观望|落地|节奏|何时|何地|地点|城市|深圳|上海|周期/.test(body)) return true;
-  if (sig.asksOffer && /offer|评估|流程|定论|窗口|跟进/.test(body)) return true;
-  if (sig.asksOtherFeeling && /对方|心意|态度|互动|靠近|冷淡/.test(body)) return true;
-  if (sig.asksShouldIDo && /继续|暂缓|沟通|推进|放下|离开|主动|靠近|开口/.test(body)) return true;
-  if (sig.asksInterview && /面试|二面|评估|流程|跟进|等待期/.test(body)) return true;
-  const cards = reading.cards || [];
-  if (cards.length === 1 && cards[0]?.name && body.includes(cards[0].name) && VERDICT_LEAN_MARKERS.test(body)) {
-    return true;
-  }
-  if (cards.length > 1 && cards.filter((c) => body.includes(c.name)).length >= Math.min(2, cards.length)) {
-    return true;
-  }
-  return false;
+  return addressesQuestion(text, reading);
 }
 
 function orientationMismatch(text, card) {
@@ -1178,14 +1104,41 @@ function mentionsCard(text, card) {
   return body.includes(card.name) || body.includes(card.name.slice(0, 2));
 }
 
-function polishPositionReadings(items, reading, fallback) {
+function shouldFallbackPosition(raw, card, reading) {
+  const body = stripCardNamePrefix(sanitizeCopy(raw), card);
+  return (
+    !body
+    || isWeakLine(body)
+    || STALE_POSITION_PATTERNS.test(String(raw || ""))
+    || STALE_POSITION_PATTERNS.test(body)
+    || aiSummaryWrongFraming(body, reading)
+    || orientationMismatch(raw, card)
+    || (cardValence(card) === "challenge" && soundsOverlyPositive(body))
+    || !mentionsCard(raw, card)
+  );
+}
+
+function formatPositionReadingText(raw, card) {
+  const body = stripCardNamePrefix(sanitizeCopy(raw), card);
+  const prefixed = body.includes(`${card.position}·`)
+    ? body
+    : `${card.position}·${cardLabel(card)}：${body}`;
+  return clampSentenceClean(colloquializeCopy(prefixed), POSITION_READING_MAX);
+}
+
+function guardPositionReadings(items, reading, fallback) {
   const cards = reading.cards || [];
-  // P5：R = Synth(Σ Interpret(P_i|Q,L_i,C)) — 分牌层强制走引擎，AI 不得漂移
-  return cards.map((card, index) => ({
-    position: card.position,
-    cardName: card.name,
-    text: buildPositionReading(card, reading) || fallback.positionReadings?.[index]?.text || ""
-  }));
+  return cards.map((card, index) => {
+    const raw = items[index]?.text || "";
+    const text = shouldFallbackPosition(raw, card, reading)
+      ? (buildPositionReading(card, reading) || fallback.positionReadings?.[index]?.text || "")
+      : formatPositionReadingText(raw, card);
+    return {
+      position: card.position,
+      cardName: card.name,
+      text
+    };
+  });
 }
 
 function colloquializeCopy(text) {
@@ -1241,21 +1194,15 @@ function aiSummaryWrongFraming(text, reading) {
   ) {
     return true;
   }
-  if (!isCareerQuestion(reading) && /offer|评估窗|录用|试用期|投递|offer 侧/.test(body)) return true;
+  if (hasDomainLeak(body, reading)) return true;
   if (/仍在评估\/等待窗|是当前主要阻力|宜慢，别在焦虑里催结果/.test(body)) return true;
   return false;
 }
 
-function stripCareerLeakage(text, reading) {
+function stripDomainLeakage(text, reading) {
   const body = String(text || "");
-  if (!body || isCareerQuestion(reading)) return body;
-  if (/offer|评估窗|录用|试用期|投递|团队与节奏/.test(body)) return "";
-  return body;
-}
-
-function isCareerTemplateLeak(text, reading) {
-  if (isCareerQuestion(reading)) return false;
-  return /offer|评估窗|试用期|团队与节奏|快点有结果，又怕选错|offer 走向/.test(String(text || ""));
+  if (!body || !hasDomainLeak(body, reading)) return body;
+  return "";
 }
 
 function buildBriefSummary(reading, ai) {
@@ -1316,37 +1263,24 @@ function dedupeClosingLine(closingLine, briefSummary, gentleActions) {
   return clampAtSentence(out, 34);
 }
 
+function pickStoryLayer(parsed, key, fallbackText, maxLen) {
+  const out = clampSentenceClean(colloquializeCopy(parsed[key]), maxLen);
+  if (isWeakLine(out) || isMechanicalTheme(out)) return fallbackText;
+  return out;
+}
+
 export function normalizeAiResult(parsed, reading) {
   const fallback = buildGentleFallback(reading);
+  const fallbackLayers = buildStoryLayers(reading);
   let positionReadings = normalizePositionReadings(parsed, reading, fallback);
-  positionReadings = polishPositionReadings(positionReadings, reading, fallback);
-  positionReadings = positionReadings.map((item) => ({
-    ...item,
-    text: clampSentenceClean(colloquializeCopy(item.text), POSITION_READING_MAX)
-  }));
+  positionReadings = guardPositionReadings(positionReadings, reading, fallback);
 
   let directVerdict = clampAtSentence(
     stripVerdictPrefix(colloquializeCopy(parsed.directVerdict || parsed.verdict)),
     120
   );
-  if (
-    !directVerdict
-    || !isStrongVerdict(directVerdict, reading)
-  ) {
+  if (!directVerdict || !isStrongVerdict(directVerdict, reading)) {
     directVerdict = fallback.directVerdict || buildSynthesizedVerdict(reading);
-  } else {
-    const engineVerdict = fallback.directVerdict || buildSynthesizedVerdict(reading);
-    const engineLead =
-      engineVerdict.split("——")[0]?.trim()
-      || engineVerdict.split(/[。！？]/)[0]?.trim()
-      || "";
-    if (
-      engineLead.length >= 10
-      && !directVerdict.includes(engineLead.slice(0, 12))
-      && !isSimilarCopy(directVerdict, engineVerdict)
-    ) {
-      directVerdict = clampAtSentence(engineVerdict, 120);
-    }
   }
 
   let briefSummary = buildBriefSummary(reading, parsed);
@@ -1374,7 +1308,7 @@ export function normalizeAiResult(parsed, reading) {
     briefSummary
   ) || fallback.presentState;
 
-  if (isWeakLine(presentState) || !holdsEmotion(presentState, reading) || !addressesUserQuestion(presentState, reading)) {
+  if (isWeakLine(presentState) || !holdsEmotion(presentState, reading)) {
     presentState = compactPresentState(reading, groundPresentState(reading), briefSummary);
   }
   presentState = dedupePresentState(presentState, briefSummary, directVerdict);
@@ -1383,9 +1317,18 @@ export function normalizeAiResult(parsed, reading) {
   }
 
   let innerTheme = clampSentenceClean(colloquializeCopy(parsed.innerTheme), 72) || fallback.innerTheme;
-  if (isWeakLine(innerTheme) || isMechanicalTheme(innerTheme) || isSimilarCopy(innerTheme, briefSummary)) {
+  if (
+    isWeakLine(innerTheme)
+    || isMechanicalTheme(innerTheme)
+    || isSimilarCopy(innerTheme, briefSummary)
+    || !hasPsychologicalDepth(innerTheme)
+  ) {
     innerTheme = groundInnerTheme(reading);
   }
+
+  const descriptionLayer = pickStoryLayer(parsed, "descriptionLayer", fallbackLayers.description, 88);
+  const situationLayer = pickStoryLayer(parsed, "situationLayer", fallbackLayers.situation, 88);
+  const meaningLayer = pickStoryLayer(parsed, "meaningLayer", fallbackLayers.meaning, 72);
 
   let reminders = filterReminders(
     normalizeStringList(parsed.reminders, 3, 20),
@@ -1395,32 +1338,30 @@ export function normalizeAiResult(parsed, reading) {
 
   let innerTension = clampAtSentence(colloquializeCopy(parsed.innerTension || parsed.synthesis), 50)
     || fallback.innerTension;
-  if (isCareerTemplateLeak(innerTension, reading)) {
+  if (hasDomainLeak(innerTension, reading)) {
     innerTension = groundInnerTension(reading);
   }
-  const blockCard = cardByPosition(reading.cards, "阻碍", "隐藏因素");
-  const nowCard = cardByPosition(reading.cards, "现状", "今日指引", "我");
-  if (
-    isWeakLine(innerTension)
-    || isSimilarCopy(innerTension, briefSummary)
-    || !nowCard
-    || !blockCard
-    || isSimilarCopy(innerTension, positionReadings.map((item) => item.text).join(""))
-  ) {
-    innerTension = groundInnerTension(reading);
+  if (isWeakLine(innerTension) || isSimilarCopy(innerTension, briefSummary)) {
+    innerTension = meaningLayer || groundInnerTension(reading);
   }
 
   const reflectionQuestionsRaw =
     normalizeStringList(parsed.reflectionQuestions, 2, 34, 2) || fallback.reflectionQuestions;
-  let reflectionQuestions = reflectionQuestionsRaw;
-  if (!isCareerQuestion(reading) && reflectionQuestions.some((q) => isCareerTemplateLeak(q, reading))) {
+  let reflectionQuestions = reflectionQuestionsRaw.filter((q) => !isGenericReflection(q));
+  if (reflectionQuestions.length < 2) {
+    reflectionQuestions = (fallback.reflectionQuestions || []).filter((q) => !isGenericReflection(q));
+  }
+  if (reflectionQuestions.length < 2) {
+    reflectionQuestions = fallback.reflectionQuestions;
+  }
+  if (reflectionQuestions.some((q) => hasDomainLeak(q, reading))) {
     reflectionQuestions = fallback.reflectionQuestions;
   }
 
   let gentleActions = normalizeStringList(parsed.gentleActions, 2, 48)
     || normalizeStringList(parsed.action ? [parsed.action] : null, 2, 48)
     || fallback.gentleActions;
-  gentleActions = gentleActions.filter((item) => stripCareerLeakage(item, reading));
+  gentleActions = gentleActions.filter((item) => stripDomainLeakage(item, reading));
   gentleActions = dedupeListAgainstCorpus(gentleActions, [briefSummary, ...positionReadings.map((item) => item.text)], 36);
   gentleActions = groundGentleActions(gentleActions, reading, fallback);
 
@@ -1440,6 +1381,9 @@ export function normalizeAiResult(parsed, reading) {
     directVerdict,
     briefSummary,
     presentState,
+    descriptionLayer,
+    situationLayer,
+    meaningLayer,
     innerTheme,
     reminders,
     innerTension,
@@ -1477,11 +1421,8 @@ function buildReminders(reading) {
 
 /** 本地回退：温柔小屏结构化总结（扣题、按牌位） */
 export function buildGentleFallback(reading) {
-  const p = reading.questionProfile || {};
   const cards = reading.cards || [];
   const base = answerUserQuestion(reading);
-  const sig = questionSignals(reading);
-  const ctx = inferQuestionContext(reading);
 
   const reminders = buildReminders(reading);
   const positionReadings = cards.map((card) => ({
@@ -1490,66 +1431,11 @@ export function buildGentleFallback(reading) {
     text: buildPositionReading(card, reading)
   }));
 
-  let innerTension = "一方面你想尽快看清答案，另一方面你又怕选错——这样想很正常，不必责怪自己。";
-  if (sig.asksOffer) {
-    innerTension = "一方面你想尽快知道 offer 走向，另一方面你又怕在焦虑里做错选择——这份慎重说明你在认真对待自己。";
-  } else if (sig.asksOtherFeeling) {
-    innerTension = "一方面你想靠近确认，另一方面你又怕主动打破平衡——在意本身就是在乎。";
-  }
-
-  let reflectionQuestions = [
-    "如果不必今天做决定，你希望自己被怎样对待？",
-    "你现在犹豫的，更多是现实本身，还是对未来的担心？"
-  ];
-  if (sig.asksFuture && !isCareerQuestion(reading)) {
-    reflectionQuestions = [
-      "给予与回报里，哪一边让你觉得不公平？",
-      "如果把「稳健」放一放，你最想朝哪个方向试探？"
-    ];
-  } else if (sig.asksOffer) {
-    if (/等消息|等结果|面试|没消息/.test(reading.question || "")) {
-      reflectionQuestions = [
-        "这份工作最吸引你的是什么？",
-        "如果暂时没消息，你还能做些什么让自己安心？"
-      ];
-    } else {
-      reflectionQuestions = [
-        "offer 里哪些条件已书面确认，哪些还只是你的担心？",
-        "如果暂缓一周，你最想先照顾好自己哪一部分？"
-      ];
-    }
-  }
-  if (sig.choice) {
-    reflectionQuestions = [
-      `哪座城市更像${cards.find((c) => c.suitKey === "cups")?.name || "圣杯"}所说的安心感？`,
-      "如果先不问时间，你更想先弄清哪座城的现实条件？"
-    ].map((item) => item.slice(0, 38));
-  } else if (ctx.domain === "emotion" || ctx.intent === "emotion_regulation") {
-    reflectionQuestions = [
-      "如果把「必须立刻好起来」放一晚，你今晚最需要什么？",
-      "这份焦虑背后，你最担心失去的是什么？"
-    ];
-  } else if (ctx.intent === "yes_no_decision" && /主动/.test(reading.question || "")) {
-    reflectionQuestions = [
-      "如果主动一次，你最想确认的是什么？",
-      "你怕的，是丢脸，还是其实没那么在意？"
-    ];
-  } else if (sig.asksOtherFeeling) {
-    reflectionQuestions = [
-      "除了「喜不喜欢」，你更需要被怎样对待？",
-      "如果只看行动，对方做过什么、没做什么？"
-    ];
-  } else if (ctx.domain === "self" || ctx.intent === "self_clarity") {
-    reflectionQuestions = [
-      "如果把「应该成为的样子」放一放，你现在最需要什么？",
-      "你对自己最苛刻的一条标准是什么？"
-    ];
-  }
-
+  const reflectionQuestions = reflectionQuestionsFallback(reading);
   let gentleActions = buildSpreadActions(reading);
   const adviceCard = cardByPosition(cards, "建议", "下一步") || cards.at(-1);
   const leadAction = adviceCard?.actionHint ? clampText(adviceCard.actionHint, 40) : "";
-  const spreadIsConcrete = gentleActions.some((it) => /跟进|列出|写|发|核实|确认/.test(it));
+  const spreadIsConcrete = gentleActions.some((it) => /跟进|列出|写|发|核实|确认|散步|呼吸|睡/.test(it));
   if (leadAction && !spreadIsConcrete && !gentleActions.some((it) => isSimilarCopy(it, leadAction))) {
     gentleActions = [leadAction, ...gentleActions].slice(0, 2);
   }
@@ -1557,20 +1443,7 @@ export function buildGentleFallback(reading) {
   const layers = buildStoryLayers(reading);
   const directVerdict = stripVerdictPrefix(base.directVerdict || buildFallbackDirectVerdict(reading));
   const briefSummary = buildBriefSummary(reading, null);
-  let innerTensionOut = groundInnerTension(reading);
-  const useMeaningLayer =
-    layers.meaning
-    && (
-      sig.asksOffer
-      || (ctx.domain === "career" && /offer|面试/.test(reading.question || ""))
-      || ctx.intent === "partner_attitude"
-      || ctx.domain === "emotion"
-      || ctx.domain === "self"
-    );
-  if (useMeaningLayer) {
-    innerTensionOut = layers.meaning;
-  }
-
+  const innerTensionOut = layers.meaning || groundInnerTension(reading);
   return {
     headline: groundHeadline(reading) || base.headline,
     directVerdict,

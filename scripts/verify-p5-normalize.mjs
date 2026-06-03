@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** P5：模拟 AI 漂移输出，断言 normalizeAiResult 强制 Interpret 地板 */
+/** P6：AI 主责解读 — 有效 AI 分牌保留；漂移/弱句才回退引擎 */
 import { normalizeAiResult } from "../ai-reading.js";
 import { analyzeQuestion } from "../public/question-profile.js";
 import { tarotDeck } from "../tarot-data.js";
@@ -31,18 +31,20 @@ const reading = {
   cards
 };
 
-const aiDrift = {
+const aiGood = {
   directVerdict:
     "offer更像评估等待期，不是已黄。现状正义正：流程仍在转动；阻碍圣杯四正：你内心倦怠；建议月亮逆：停止脑补。",
   briefSummary:
-    "offer更像评估等待期，不是已黄。现状正义正：流程仍在转动，需要你保持平衡等待判断。",
-  presentState:
-    "我感受到你在等一个转机。offer更像评估等待期，不是已黄。现状正义正：流程仍在转动。",
+    "我感受到你在等一个转机。offer更像评估等待期，不是已黄——先分清事实与担心。",
+  presentState: "悬空感我能感受到。结论：流程仍在评估期，先分清已知信息与脑补的担心。",
+  descriptionLayer: "牌面看见评估仍在进行，不是一锤定音。",
+  situationLayer: "你困的不是安静，而是把没消息读成否定。",
+  meaningLayer: "一边想快点有结果，一边又怕听到坏消息。",
   innerTheme: "底层是对值不值得被认真对待的怀疑。",
   positionReadings: cards.map((c) => ({
     position: c.position,
     cardName: c.name,
-    text: `${c.position}·${c.name}：AI自由发挥倦怠与不满 narrative`
+    text: `${c.position}·${c.name}（${c.orientation}）：就 offer 而言，${c.name}指向${c.keywords?.[0] || "关键信号"}，需要放进你的等待节奏里理解。`
   })),
   gentleActions: ["列出待确认项，发礼貌跟进", "本周核对一条 offer 事实"],
   reflectionQuestions: ["你更怕机会没了，还是怕推进一小步？", "不要只在细节里找确定感"],
@@ -51,44 +53,50 @@ const aiDrift = {
   headline: "评估等待"
 };
 
-const out = normalizeAiResult(aiDrift, reading);
+const aiDrift = {
+  ...aiGood,
+  positionReadings: cards.map((c) => ({
+    position: c.position,
+    cardName: c.name,
+    text: "AI自由发挥 narrative without card name"
+  }))
+};
+
+const goodOut = normalizeAiResult(aiGood, reading);
+const driftOut = normalizeAiResult(aiDrift, reading);
 let ok = true;
 
-for (const card of cards) {
-  const engine = interpretCardInContext(card, reading);
-  const pr = out.positionReadings.find((p) => p.cardName === card.name);
-  if (!pr?.text.includes(engine.slice(0, 8))) {
-    console.log("FAIL position not from engine:", card.name, pr?.text);
-    ok = false;
-  }
-}
-
-if (/AI自由发挥|内心倦怠 narrative/.test(JSON.stringify(out))) {
-  console.log("FAIL AI drift leaked into output");
+const cupFourGood = goodOut.positionReadings.find((p) => p.cardName === "圣杯四");
+if (!cupFourGood?.text.includes("倦怠") && !cupFourGood?.text.includes("圣杯四")) {
+  console.log("FAIL good AI position not preserved:", cupFourGood?.text);
   ok = false;
 }
 
-if (isDup(out.briefSummary, out.directVerdict)) {
-  console.log("FAIL briefSummary duplicates verdict");
+if (/就 offer 现在这一步，对/.test(cupFourGood?.text || "")) {
+  console.log("FAIL good AI replaced by engine template:", cupFourGood?.text);
   ok = false;
 }
 
-if (!/评估|等待|不是已黄/.test(out.directVerdict)) {
-  console.log("FAIL verdict direction");
+if (!goodOut.descriptionLayer || !goodOut.situationLayer) {
+  console.log("FAIL story layers missing from AI");
   ok = false;
 }
 
-console.log(ok ? "OK" : "FAIL", "P5 normalizeAiResult floor");
-console.log("  verdict:", out.directVerdict.slice(0, 80) + "…");
-console.log("  圣杯四:", out.positionReadings.find((p) => p.cardName === "圣杯四")?.text);
+const cupFourDrift = driftOut.positionReadings.find((p) => p.cardName === "圣杯四");
+const engineSnippet = interpretCardInContext(cards[1], reading).slice(0, 8);
+if (!cupFourDrift?.text.includes(engineSnippet)) {
+  console.log("FAIL drift not guarded by engine:", cupFourDrift?.text);
+  ok = false;
+}
+
+if (/AI自由发挥/.test(JSON.stringify(driftOut))) {
+  console.log("FAIL drift leaked");
+  ok = false;
+}
+
+console.log(ok ? "OK" : "FAIL", "P6 AI-primary normalize");
+console.log("  good 圣杯四:", cupFourGood?.text?.slice(0, 60));
+console.log("  drift 圣杯四:", cupFourDrift?.text?.slice(0, 60));
 console.log("Synthesis:", READING_SYNTHESIS_VERSION);
 if (!ok) process.exit(1);
-console.log("P5 AI normalize checks passed.");
-
-function isDup(a, b) {
-  const left = String(a || "").replace(/\s/g, "");
-  const right = String(b || "").replace(/\s/g, "");
-  if (left.length < 12 || right.length < 12) return false;
-  const lead = right.slice(0, Math.min(24, right.length));
-  return left.includes(lead) && left.length <= right.length * 1.2;
-}
+console.log("P6 AI-primary checks passed.");

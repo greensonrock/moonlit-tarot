@@ -444,27 +444,23 @@ export function interpretCardInContext(card, reading) {
   return line.replace(/[；;，,。\s]+$/g, "").trim();
 }
 
-/** 牌位前缀（扣题，非套话） */
+/** 牌位前缀（扣题，按意图×域，非单一 offer 套话） */
 export function positionAnchor(card, reading) {
   const ctx = inferQuestionContext(reading);
   const pos = card.position;
-  const career = ctx.domain === "career" || /offer|面试/.test(ctx.question);
 
-  if (career && ctx.intent === "outcome_forecast") {
-    if (pos === "现状") return "就 offer 现在这一步，";
-    if (pos === "阻碍") return "卡住进度的是，";
-    if (pos === "建议") return "更值得做的是，";
-  }
-  if (ctx.intent === "partner_attitude") {
-    if (pos === "现状") return "就对方态度，";
-    if (pos === "阻碍") return "主要卡在，";
-    if (pos === "建议") return "你可以，";
-  }
-  if (ctx.intent === "yes_no_decision" && pos === "建议") return "就你的问题，";
-  if ((ctx.domain === "emotion" || ctx.intent === "emotion_regulation") && pos === "建议") return "就你此刻的需要，";
-  if ((ctx.domain === "emotion" || ctx.intent === "emotion_regulation") && pos === "现状") return "就你现在的感受，";
-  if ((ctx.domain === "self" || ctx.intent === "self_clarity") && pos === "现状") return "就你此刻的自我状态，";
-  if ((ctx.domain === "self" || ctx.intent === "self_clarity") && pos === "建议") return "就你的成长方向，";
+  const byIntent = {
+    outcome_forecast: { 现状: "就现在这一步，", 阻碍: "卡住进度的是，", 建议: "更值得做的是，" },
+    partner_attitude: { 现状: "就对方态度，", 阻碍: "主要卡在，", 建议: "你可以，" },
+    yes_no_decision: { 建议: "就你的问题，", 今日指引: "就你的问题，" },
+    binary_choice: { 现状: "就两个选项，", 阻碍: "真正卡在，", 建议: "更值得先，" },
+    timing: { 现状: "就时间线现在，", 阻碍: "拖住节点的是，", 建议: "可以先，" },
+    emotion_regulation: { 现状: "就你现在的感受，", 建议: "就你此刻的需要，" },
+    self_clarity: { 现状: "就你此刻的自我状态，", 建议: "就你的成长方向，" }
+  };
+
+  const row = byIntent[ctx.intent];
+  if (row?.[pos]) return row[pos];
   return "";
 }
 
@@ -490,17 +486,18 @@ export function inferSpreadLead(reading, now, block, advice) {
 
   const careerOffer = ctx.domain === "career" || /offer|面试|录用/.test(ctx.question);
 
-  if (careerOffer && ctx.intent === "outcome_forecast") {
+  if (ctx.intent === "outcome_forecast") {
+    const topic = careerOffer && /offer|录用|入职/.test(ctx.question) ? "offer" : "这件事";
     const infoGap = /信息|秘密|未全|猜|保留|策略|沟通|评估|筛选/.test(nowText + blockText);
     const multiLine = /多线|拉扯|失衡|juggling|并行|顾此失彼/.test(blockText);
     const waitPhase = /未齐|偏慢|收集|等待|评估/.test(blockText);
     const positiveNow = nowV === "support" || /打开|正向|加分|窗口/.test(nowText);
 
-    if (infoGap && multiLine) return "offer更偏「信息未说透 + 多线拉扯」——不是没戏，要用清晰沟通核验，别靠猜";
-    if (infoGap && waitPhase) return "offer走向偏「等待观察期，不是已否」——反馈未齐，别用沉默填最坏答案";
-    if (positiveNow && blockV === "challenge") return "offer更像评估等待期、不是已黄——有底子，但阻碍在信息与节奏";
-    if (blockV === "challenge" && advV !== "challenge") return "offer仍在流程中——卡点已明确，建议牌指向可行动的小步";
-    return "offer仍在评估窗、尚未一锤定音——先分清事实与担心，再决定要不要跟进";
+    if (infoGap && multiLine) return `${topic}更偏「信息未说透 + 多线拉扯」——不是没戏，要用清晰沟通核验，别靠猜`;
+    if (infoGap && waitPhase) return `${topic}走向偏「等待观察期，不是已否」——反馈未齐，别用沉默填最坏答案`;
+    if (positiveNow && blockV === "challenge") return `${topic}更像评估等待期、不是一锤定音——有底子，但阻碍在信息与节奏`;
+    if (blockV === "challenge" && advV !== "challenge") return `${topic}仍在流程中——卡点已明确，建议牌指向可行动的小步`;
+    return `${topic}仍在展开窗、尚未一锤定音——先分清事实与担心，再决定下一步`;
   }
 
   if (ctx.intent === "partner_attitude") {
@@ -580,15 +577,14 @@ export function inferSpreadLead(reading, now, block, advice) {
 
 export function inferInnerTheme(reading, now, block, advice) {
   const ctx = inferQuestionContext(reading);
-  const careerOffer = ctx.domain === "career" || /offer|面试/.test(ctx.question);
 
-  if (careerOffer) {
+  if (ctx.intent === "outcome_forecast") {
     const blockText = block ? interpretCardInContext(block, reading) : "";
     if (/未齐|偏慢|收集|等待/.test(blockText)) {
-      return "你卡的不只是 silence，而是把「没消息」迅速读成「没戏」——评估期要的是核实，不是脑补。";
+      return "你卡的不只是 silence，而是把「没消息」迅速读成「没戏」——展开期要的是核实，不是脑补。";
     }
     if (/信息|秘密|猜|保留/.test(interpretCardInContext(now, reading) + blockText)) {
-      return "表面在问 offer 走向，底层在问：我值不值得被认真选择？先把事实与想象分开。";
+      return "表面在问走向，底层在问：我值不值得被认真选择？先把事实与想象分开。";
     }
     return "好奇背后是对确定感的需要——这很正常；牌提醒用核实代替空等。";
   }
@@ -636,26 +632,18 @@ export function inferStoryLayers(reading) {
       `${advice.name}建议${interpretCardInContext(advice, reading)}`
     ].join("；") + "。";
 
-    const careerOffer = ctx.domain === "career" || /offer|面试/.test(ctx.question);
-    let situation;
-    let meaning;
-
-    if (careerOffer) {
-      situation = `放回${themeLabel}：「${now.name}」看局面起点，「${block.name}」看卡点，「${advice.name}」定交换与下一步——本周重点是事实节点，不是情绪下注。`;
-      meaning = inferInnerTheme(reading, now, block, advice);
-    } else if (ctx.intent === "partner_attitude") {
-      situation = `放回关系里：${now.name}看互动温度，${block.name}看卡点，${advice.name}看你怎么表达需求。`;
-      meaning = inferInnerTheme(reading, now, block, advice);
-    } else if (ctx.domain === "emotion" || ctx.intent === "emotion_regulation") {
-      situation = `放回${themeLabel}：${now.name}看当下感受，${block.name}看消耗点，${advice.name}定恢复的小步——本周先稳节奏，再求大答案。`;
-      meaning = inferInnerTheme(reading, now, block, advice);
-    } else if (ctx.domain === "self" || ctx.intent === "self_clarity") {
-      situation = `放回${themeLabel}：${now.name}看自我状态，${block.name}看旧模式卡点，${advice.name}定整合的小步——本周先重建自我证据，不求一次想通。`;
-      meaning = inferInnerTheme(reading, now, block, advice);
-    } else {
-      situation = `三牌合参（${now.name}→${block.name}→${advice.name}），主线扣你的原问题。`;
-      meaning = inferInnerTheme(reading, now, block, advice);
-    }
+    const situationByIntent = {
+      outcome_forecast: `放回${themeLabel}：「${now.name}」看起点，「${block.name}」看卡点，「${advice.name}」定下一步——先核对事实节点，不是情绪下注。`,
+      partner_attitude: `放回关系里：${now.name}看互动温度，${block.name}看卡点，${advice.name}看你怎么表达需求。`,
+      emotion_regulation: `放回${themeLabel}：${now.name}看当下感受，${block.name}看消耗点，${advice.name}定恢复的小步——本周先稳节奏，再求大答案。`,
+      self_clarity: `放回${themeLabel}：${now.name}看自我状态，${block.name}看旧模式卡点，${advice.name}定整合的小步——本周先重建自我证据，不求一次想通。`,
+      yes_no_decision: `放回${themeLabel}：${now.name}看立场起点，${block.name}看犹豫点，${advice.name}看可试探的表达方式。`,
+      binary_choice: `放回${themeLabel}：${now.name}看价值起点，${block.name}看比较时的卡点，${advice.name}看可执行的试探步。`,
+      timing: `放回${themeLabel}：${now.name}看当前节点，${block.name}看延迟因素，${advice.name}看可跟进的节奏。`
+    };
+    const situation = situationByIntent[ctx.intent]
+      || `三牌合参（${now.name}→${block.name}→${advice.name}），主线扣你的原问题。`;
+    const meaning = inferInnerTheme(reading, now, block, advice);
     return { description, situation, meaning };
   }
 
@@ -673,17 +661,16 @@ export function inferStoryLayers(reading) {
 export function inferActions(reading) {
   const ctx = inferQuestionContext(reading);
   const advice = cardByPosition(reading.cards, "建议", "下一步", "今日指引");
-  const careerOffer = ctx.domain === "career" || /offer|面试/.test(ctx.question);
 
-  if (careerOffer) {
+  if (ctx.intent === "outcome_forecast" && ctx.domain === "career") {
     const elem = advice?.suitKey || advice?.element;
     const second =
       elem === "pentacles" || advice?.name?.includes("星币")
-        ? "列出薪资/职责/试用期三条，发一封礼貌跟进确认进度"
+        ? "列出条件/职责/回报三条，发一条礼貌跟进确认进度"
         : elem === "swords" || advice?.name?.includes("宝剑")
-          ? "写一封清晰邮件/消息：确认评估进度与一个具体事实"
-          : "为每条机会写一行：最后联系日、联系人、下一步节点";
-    return [second, "本周对最在意的一家发一条跟进，不连发"];
+          ? "写一条清晰消息：确认进度与一个具体事实"
+          : "为每条线索写一行：最后联系日、联系人、下一步节点";
+    return [second, "本周对最在意的一条线发一次跟进，不连发"];
   }
   if (ctx.intent === "partner_attitude") {
     return ["写下你最想确认的一个事实（对方做过什么、没做什么）", "选一次合适场合，用一句直接问法表达需求"];

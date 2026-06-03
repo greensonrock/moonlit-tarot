@@ -57,29 +57,40 @@ export function inferLifeSpheres(profile = {}) {
 
 export function describeReadingTask(profile = {}, question = "") {
   const q = String(question || "");
+  const intent = profile.readingIntent || profile.intent || "outcome_forecast";
+
+  switch (intent) {
+    case "outcome_forecast":
+      return profile.isCareer || profile.asksOffer || profile.asksInterview || /工作|职业|面试|岗位/.test(q)
+        ? "先答进程/阶段/风险点，再解释三牌；强调事实与担心分离，不保证结果。"
+        : "先答走向/阶段/窗口，再解释三牌；给明确倾向与小步，不保证结果。";
+    case "partner_attitude":
+      return "先答关系温度与不确定点，再解释三牌；照见用户在关系里的体验，不替对方读心。";
+    case "yes_no_decision":
+      return "先给宜/不宜/宜小步的牌理倾向，再解释三牌；校准表达方式，不替用户拍板。";
+    case "binary_choice":
+      return "先给牌理倾向与权衡框架，再解释三牌；可比较选项质感，不打包票唯一答案。";
+    case "timing":
+      return "先答节点/节奏（未齐、仍在展开），再解释三牌；不写具体日期。";
+    case "emotion_regulation":
+      return "先承认感受合理，再用牌指出能量与恢复路径，给微小可执行步。";
+    case "self_clarity":
+      return "先回应自我状态与内在需求，再解释三牌；innerTheme 做觉察框定，给可自我核对的小步。";
+    default:
+      break;
+  }
+
   if (profile.asksInterview || /面试|二面/.test(q)) {
-    return "先回答「流程现在像什么阶段、两个没消息可能意味着什么」，再解释三牌；区分对方流程 vs 你内心的公平/失控感；给本周可执行的跟进动作，不保证录用、不写具体日期。";
-  }
-  if (profile.asksOffer || /offer/.test(q)) {
-    return "先回答 offer 进程与风险点，再解释三牌；强调书面核对与事实/担心分离，不保证结果。";
-  }
-  if (profile.asksOtherFeeling) {
-    return "先回答关系温度与不确定点，再解释三牌；照见你在关系里的体验，不替对方读心。";
-  }
-  if (profile.isDecision || profile.isFuture || /该不该|还是/.test(q)) {
-    return "先给牌理倾向与权衡框架，再解释三牌；可比较选项质感，不替用户拍板唯一答案。";
-  }
-  if (profile.isEmotion) {
-    return "先承认感受合理，再用牌指出能量与恢复路径，给微小可执行步。";
+    return "先回答流程阶段与不确定点，再解释三牌；区分外部流程 vs 内心公平/失控感；给本周可执行跟进，不保证录用。";
   }
   if (profile.isRelationship) {
     return "先答关系温度与不确定点，再解释三牌；照见用户在关系里的体验，不替对方读心。";
   }
+  if (profile.isEmotion) {
+    return "先承认感受合理，再用牌指出能量与恢复路径，给微小可执行步。";
+  }
   if (profile.isRelease) {
     return "先回应「能否放下/如何走出」，再解释三牌；允许哀伤，给收回注意力的小步。";
-  }
-  if (profile.isSelf) {
-    return "先回应自我状态与内在需求，再解释三牌；innerTheme 做觉察框定，给可自我核对的小步。";
   }
   return "先直接回应原问题，再用现状→阻碍→建议串成因果；给明确倾向与一张小行动卡。";
 }
@@ -156,10 +167,11 @@ ${chain || "（见下方牌面输入）"}
 ══════════════════
 四、输出契约（JSON 字段）
 ══════════════════
-- directVerdict（必写）：第一句直接答字面问题（阶段/倾向/温度/宜否），再点名三张牌位与牌名作依据；禁止「就你问的…」套话；禁止「别急着下结论」「不必今天想通」逃避作答
+- directVerdict（必写）：首句明确立场/倾向/宜否，再点名三张牌位与牌名作依据；禁止「就你问的…」套话；禁止「别急着下结论」「不必今天想通」逃避作答
 - briefSummary：与 directVerdict 同方向，半句接住 + 浓缩
 - positionReadings：每张先半句扣原问题，再解该牌；50–68字
-- innerTheme：重新框定——表层困惑 → 更深内在课题（一句）
+- innerTheme：重新框定——表层困惑 → 内在课题（配得感/害怕什么/在等什么许可）
+- reflectionQuestions：两条，须扣本盘牌面与原问；第一条会作为牌师追问展示
 - gentleActions：两条，本周可执行，扣用户工作/生活场景（对象+步骤）
 - 全文第二人称「你」；禁止算命腔、禁止保证录用/分手/具体日期
 

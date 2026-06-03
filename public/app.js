@@ -1,7 +1,7 @@
 import { inferMoodFromQuestion, inferThemeFromQuestion } from "/question-profile.js";
 
 const app = document.querySelector("#app");
-const BUILD_ID = "20260604e";
+const BUILD_ID = "20260605b";
 
 function askBanner() {
   const q = (state.question || "").trim();
@@ -2078,14 +2078,14 @@ function renderTarotStory(reading) {
     : story.actions?.[0] || story.actions?.[1] || "本周把建议牌落成一件可核对的小事：写下你要确认的一个事实，并安排一次具体跟进。";
   const echo = story.closing
     || "这次抽牌更像是在提醒你：你不是没想法，而是还没准备好承认自己的答案。";
-  const sharpQuestion = buildSharpQuestion(story, reading);
+  const sharpQuestion = pickSharpQuestion(story, reading);
 
   return `
     <article class="tarot-story" aria-label="牌阵故事解读">
       <section class="reader-note" style="--chapter-i:0">
         <p class="reader-note__eyebrow">这次先看这里</p>
         <h3>${story.directVerdict ? "牌师判断" : story.resonance ? `你停在了：${escapeHtml(story.resonance.name)}` : `关于你的问题：${escapeHtml(story.headline)}`}</h3>
-        <p class="reader-note__copy reader-note__verdict">${escapeHtml(story.directVerdict || "牌面判断生成中，请展开下方完整牌局查看。")}</p>
+        <p class="reader-note__copy reader-note__verdict">${formatVerdictHtml(story.directVerdict || "牌面判断生成中，请展开下方完整牌局查看。")}</p>
         ${story.briefSummary && story.directVerdict && !isSimilarSummaryCopy(story.briefSummary, story.directVerdict)
     ? `<p class="reader-note__brief">${escapeHtml(story.briefSummary)}</p>`
     : ""}
@@ -2131,14 +2131,51 @@ function renderTarotStory(reading) {
   `;
 }
 
+function pickSharpQuestion(story, reading) {
+  const aiQ = (story.questions || []).find((q) => q && q.length >= 10 && !/慢慢来|顺其自然|别急着决定/.test(q));
+  if (aiQ) return aiQ;
+  return buildSharpQuestion(story, reading);
+}
+
+function formatVerdictHtml(verdict) {
+  const text = stripVerdictPrefix(String(verdict || "").trim());
+  if (!text) return "";
+  const firstEnd = text.search(/[。！？]/);
+  if (firstEnd >= 8 && firstEnd <= 48) {
+    const lead = text.slice(0, firstEnd + 1);
+    const rest = text.slice(firstEnd + 1).trim();
+    return `<strong class="reader-note__verdict-lead">${escapeHtml(lead)}</strong>${rest ? ` ${escapeHtml(rest)}` : ""}`;
+  }
+  return escapeHtml(text);
+}
+
 function buildSharpQuestion(story, reading) {
-  const key = story.resonance ? coreSymbols(story.resonance, 1) : story.headline;
-  if (/offer|面试|录用|二面|没消息/.test(reading.question || "")) {
-    return "你更怕的是机会没了，还是怕承认自己其实还能再推进一小步？";
+  const q = reading.question || "";
+  const ctx = story.headline || "";
+
+  if (/他|她|对方|ta/i.test(q) && /感觉|喜欢|爱|态度|心意/.test(q)) {
+    return "你更想知道对方怎么想，还是更想确认自己值不值得被认真对待？";
   }
-  if (/该不该|要不要|继续|离开|放弃|选择/.test(reading.question || "")) {
-    return `你是在问选择，还是在等一个不用承担代价的许可？`;
+  if (/该不该|要不要|是否|继续|放弃|主动/.test(q)) {
+    return "你是在问选择，还是在等一个不用承担代价的许可？";
   }
+  if (/还是|或者|或是/.test(q) && /选|去|留|哪/.test(q)) {
+    return "你卡在选项本身，还是卡在不敢为选择负责？";
+  }
+  if (/睡不着|焦虑|怎么办|撑不住|情绪/.test(q)) {
+    return "你想要答案，还是想要有人先承认你受伤了？";
+  }
+  if (/自己|成长|喜欢自己|走出|放下/.test(q)) {
+    return "你对自己苛刻的，是能力，还是「不够好就不配休息」？";
+  }
+  if (/什么时候|何时|多久|哪里/.test(q)) {
+    return "你急的是时间点，还是急的是「没有消息=否定我」？";
+  }
+  if (/会怎么样|能不能|会不会|情况|走向|未来|接下来/.test(q)) {
+    return "你更怕的是机会没了，还是怕在焦虑里误判了阶段？";
+  }
+
+  const key = story.resonance ? coreSymbols(story.resonance, 1) : ctx;
   if (story.resonance?.orientation === "逆位") {
     return `你真正抗拒的，是事情本身，还是承认「${key}」已经发生了？`;
   }

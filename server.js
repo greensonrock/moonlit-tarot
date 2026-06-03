@@ -135,6 +135,7 @@ async function drawReading({ theme, mood, question, spread, selectedSlots, drawM
       if (ai) {
         reading.summary = mergeAiSummary(reading, ai);
         reading.aiPowered = true;
+        applyAiPositionAnalysis(reading);
       }
     } catch (error) {
       console.error("AI reading failed:", error.message);
@@ -147,6 +148,18 @@ async function drawReading({ theme, mood, question, spread, selectedSlots, drawM
   }
 
   return reading;
+}
+
+function applyAiPositionAnalysis(reading) {
+  const items = reading.summary?.aiCompact?.positionReadings;
+  if (!reading.aiPowered || !items?.length) return;
+  for (const card of reading.cards || []) {
+    const item = items.find((p) => p.cardName === card.name && p.position === card.position)
+      || items.find((p) => p.position === card.position);
+    if (!item?.text) continue;
+    const body = item.text.replace(/^[^：:]+[：:]\s*/, "").trim();
+    card.analysis = body.slice(0, 140);
+  }
 }
 
 function buildSummary({ theme, mood, question, cards, questionProfile }) {

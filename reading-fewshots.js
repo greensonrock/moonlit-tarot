@@ -3,13 +3,14 @@
  */
 
 export const STRUCTURE_CONSTITUTION = `【结构宪法 · 全题型必守】
-1. directVerdict：第一句直接答字面问题（倾向/阶段/温度/宜否），再用牌位+牌名作依据；禁止「就你问的…」套话开头。
+1. directVerdict：首句必须是明确立场（不是已黄/偏有温度/宜暂缓/不宜猛攻），再用牌位+牌名作依据；禁止「就你问的…」套话开头。
 2. briefSummary：半句接住 + 与 directVerdict 同结论；禁止另起「只安慰不答问」主线。
 3. presentState：感受+一句结论，不写牌名，不推翻 directVerdict。
-4. innerTheme：一句重新框定（表层困惑→内在课题），不复述牌面。
+4. innerTheme：一句重新框定（表层困惑→内在课题：配得感/害怕什么/在等什么许可），不复述牌面。
 5. positionReadings：每张先半句扣原问再解牌；唯一详细解牌处。
-6. gentleActions：恰好 2 条，本周可执行，含对象+步骤；禁止「慢慢来/顺其自然/别急着决定」作主行动。
-7. 禁止同段在 directVerdict、briefSummary、描述层重复粘贴。`;
+6. reflectionQuestions：两条须扣本盘牌面与原问，禁止通用模板。
+7. gentleActions：恰好 2 条，本周可执行，含对象+步骤；禁止「慢慢来/顺其自然/别急着决定」作主行动。
+8. 禁止同段在 directVerdict、briefSummary、描述层重复粘贴。`;
 
 export function buildFewShotBrief() {
   return `${STRUCTURE_CONSTITUTION}
@@ -18,9 +19,10 @@ export function buildFewShotBrief() {
 用户问：「接下来 offer 情况，两个二面没消息」
 牌：现状·权杖王后正 → 阻碍·圣杯七逆 → 建议·倒吊人正
 {
-  "directVerdict": "牌面更像评估等待期、不是已黄——现状权杖王后：你上场状态是加分；阻碍圣杯七逆：两条线在心里叠成一堆「如果」；建议倒吊人：本周少猜、各做一次事实核对。",
+  "directVerdict": "offer仍在评估窗，不是已黄——现状权杖王后：你上场状态是加分；阻碍圣杯七逆：两条线在心里叠成一堆「如果」；建议倒吊人：本周少猜、各做一次事实核对。",
   "briefSummary": "悬空感我懂。结论：流程仍在评估，先核对两条线的事实，再决定要不要追问。",
   "innerTheme": "你卡的不只是 silence，而是把「没回复」迅速读成「我不够好」。",
+  "reflectionQuestions": ["offer 里哪些条件已书面确认，哪些还只是你的担心？", "如果权杖王后那份认真还在，本周你愿意主动核对哪一条事实？"],
   "gentleActions": ["为 A/B 两家各写一行：最后联系日、联系人、下一步节点", "本周对更在意的一家发一条礼貌跟进，确认进度，不连发"]
 }
 
@@ -28,9 +30,10 @@ export function buildFewShotBrief() {
 用户问：「他对我还有没有感觉」
 牌：现状·圣杯骑士正 → 阻碍·宝剑七逆 → 建议·力量正
 {
-  "directVerdict": "牌面偏「有温度但未说透」——现状圣杯骑士：情感仍在流动；阻碍宝剑七逆：信息不全、各自防备；建议力量：你先稳住节奏、用清晰边界试探，不逼答案。",
+  "directVerdict": "牌面偏「有温度但未说透」——现状圣杯骑士：情感仍在流动；阻碍宝剑七逆：信息不全、各自防备；建议力量：宜先稳住节奏、用清晰边界试探，不宜逼答案。",
   "briefSummary": "在意很正常。牌面说：有互动余地，但别用猜代替对话。",
   "innerTheme": "你要的可能不是他一句喜欢，而是确认自己值得被认真对待。",
+  "reflectionQuestions": ["除了「喜不喜欢」，你更需要被怎样对待？", "如果按圣杯骑士的方式小步试探，你最想确认的一个事实是什么？"],
   "gentleActions": ["写下你最想确认的一个事实（他做过什么、没做什么）", "选一次轻松场合，用一句直接问法表达需求，不质问"]
 }
 
