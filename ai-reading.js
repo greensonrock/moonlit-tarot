@@ -109,25 +109,54 @@ function activeCardMeaning(card, profile = {}) {
   return line;
 }
 
-function spreadHonestyHint(reading) {
+/**
+ * 向模型注入「牌面事实 + 合参步骤」，不预设结论、不用规则引擎定调。
+ */
+function buildCardJudgmentSynthesisBrief(reading) {
+  const q = reading.question || "";
   const cards = reading.cards || [];
   if (!cards.length) return "";
-  const profile = reading.questionProfile || {};
-  const chain = cards.map((c) => `${c.position}·${c.name}(${cardValenceLabel(c, profile)})`).join(" → ");
-  const supportCount = cards.filter((c) => cardValence(c, profile) === "support").length;
-  const challengeCount = cards.filter((c) => cardValence(c, profile) === "challenge").length;
-  const neutralCount = cards.length - supportCount - challengeCount;
-  let leanHint = "整体基调中性，按牌面如实展开";
-  if (supportCount > challengeCount) leanHint = "整体基调偏支持，directVerdict 首句可给出偏有利/偏顺势的明确观点";
-  else if (challengeCount > supportCount) leanHint = "整体基调偏挑战，directVerdict 首句可给出偏谨慎/偏不利的明确观点";
-  else if (supportCount === challengeCount && supportCount > 0) leanHint = "支持与挑战并存，首句给平衡但有立场的判断";
 
-  return `【牌阵基调 · 必守】${chain}。支持 ${supportCount} / 挑战 ${challengeCount} / 中性 ${neutralCount}。
-- ${leanHint}；观点必须来自本次抽到的牌，禁止无视牌面一律读悲观或一律读乐观。
-- 挑战牌：点出具体卡点（用该牌关键词），禁止空泛安慰。
-- 支持牌：写实写出助力，支持牌落在「阻碍」位时按该牌义解读，不要硬说成坏事。
-- 中性牌：写观察与待核实项。
-- 每张 positionReadings：结构「如实一句 + 温柔一句」；禁止定命恐吓，也禁止与牌面相反的强行报喜。`;
+  const cardBlocks = cards.map((card) => {
+    const k = getCardKnowledge(card);
+    const keys = (card.keywords || []).join("、") || "—";
+    const orient = card.orientation === "逆位" ? "逆位" : "正位";
+    const lines = [
+      `▸ ${card.position}｜${card.name}（${orient}）`,
+      `  关键词：${keys}`
+    ];
+    if (card.arcana) lines.push(`  阿卡那：${card.arcana}`);
+    if (k?.element) lines.push(`  元素：${k.element}`);
+    if (k?.imagery || card.imagery) lines.push(`  意象：${k?.imagery || card.imagery}`);
+    if (card.numerologyStage) lines.push(`  数字/阶段：${card.numerologyStage}`);
+    if (card.actionHint) lines.push(`  行动提示：${card.actionHint}`);
+    lines.push(`  → 单读：在「${q}」下，这张${orient}牌的关键词/意象各指向什么？（只论本牌，先不下总倾向）`);
+    return lines.join("\n");
+  }).join("\n\n");
+
+  const sig = questionSignals(reading);
+  const winLoseBlock = sig.asksWinLose
+    ? `
+【输赢合参 · 禁止单牌定调】
+- 首句倾向必须三张合参；不能只因中间张有「结束/转化/高塔」就直接判「偏逆风」
+- 建议张（如圣杯十=圆满快乐、节制=控仓节奏）与现状张同等计入总倾向
+- 例：现状权杖九（疲惫坚守）+ 阻碍死神（阶段转换）+ 建议圣杯十（快乐小注）→ 多为「五五开/不宜重仓、小注娱乐」，而非单因死神判逆风`
+    : "";
+
+  return `【牌面合参 · 判断只能从这里推导】
+${cardBlocks}
+
+【合参步骤 · 必守】
+1. 逐张单读：用每张牌的关键词、正逆位、元素、意象，在「${q}」下各形成一句「本牌说什么」。
+2. 串成因果：现状能量 → 中间张如何修正/拉扯（按该牌自身牌义，不因牌位名先入为主） → 建议张给出什么出口。
+3. 定调首句：directVerdict 第一句 = 三张合参后的明确观点；第二句起逐张点牌名/牌位作证，每张至少一次。
+4. 自检：首句倾向须能从三张牌各找到依据；若建议张与首句矛盾（如圣杯十写快乐却首句判大凶），必须改首句或改解牌。
+
+【禁止】
+- 禁止无视建议张的出口，只因中间张沉重就一路读悲观
+- 禁止「牌位名=坏事」：阻碍位是叙事中段，不等于该牌本身是凶兆
+- 禁止套用与本次牌面无关的固定话术；可以主观、可以明确，但要写明是哪张牌让你这么看
+${winLoseBlock}`;
 }
 
 function soundsOverlyPositive(text) {
@@ -390,9 +419,14 @@ function questionFocusHint(reading) {
     moodResponseHint(reading),
     `【问题类型】${p.readingIntentLabel || p.intent || "自我确认"}；用户真正关心：${p.subject || "自己"}；此刻最需要：${p.coreNeed || "被看见"}。`,
     `【推理主通道 · 必守】
-你是主解读者：观点必须来自「本次抽到的牌面 + 用户原问题」的交叉推理，不是套用固定话术类型。
-每张牌至少被引用一次；正逆位、元素、意象要进入你的判断依据；可以主观、可以明确倾向，但要说明是哪张牌让你这么看。`
+你是主解读者：先逐张读牌，再三张合参定调；观点只能来自「本次抽到的牌面 + 用户原问题」，不是规则表或固定话术。
+每张牌至少被引用一次；正逆位、元素、意象必须进入判断依据；可以主观、可以明确倾向，但要能指回具体牌名。`
   ];
+
+  const synthesisBrief = buildCardJudgmentSynthesisBrief(reading);
+  if (synthesisBrief) lines.push(synthesisBrief);
+  const spreadHint = spreadSynthesisHint(reading);
+  if (spreadHint) lines.push(spreadHint);
 
   if (sig.choice) {
     lines.push(choiceHint(reading.question));
@@ -400,7 +434,8 @@ function questionFocusHint(reading) {
 
   if (sig.asksWinLose) {
     lines.push(`【输赢判断 · 必守】
-用户问的是「会不会赢/能不能成」——directVerdict 第一句必须给出明确倾向（偏顺风有胜算 / 略偏有利 / 五五开 / 略偏不利 / 偏逆风不宜重仓 之一），禁止用「仍在展开、不是已否、先观察、也许、可能」逃避。
+用户问的是「会不会赢/能不能成」——先合参三张牌再定调，第一句给出明确倾向（偏顺风有胜算 / 略偏有利 / 五五开 / 略偏不利 / 偏逆风不宜重仓 之一），禁止用「仍在展开、也许、可能」逃避。
+倾向须与三张牌平衡一致：一张重牌（如死神）不能单独压过另外两张；建议张若偏圆满/节制/太阳，须在首句或次句体现其出口含义。
 第二句起用现状/阻碍/建议三牌作证；gentleActions 须含止损/控仓/止盈或等价纪律动作。`);
   }
 
@@ -723,6 +758,7 @@ function formatCardForPrompt(card) {
   const lens = positionLensHint(card.position);
   if (lens) lines.push(`此牌位角色：${lens}`);
   if (card.actionHint) lines.push(`传统行动提示：${card.actionHint}`);
+  lines.push(`合参提示：此牌在 directVerdict 中须被点名；其${orient}关键词应影响你的总倾向，不可只解牌位名而忽略本牌义。`);
   return lines.join("\n");
 }
 
@@ -792,8 +828,8 @@ function buildPromptPayload(reading, { strictJson = false } = {}) {
     system: `你是「星月少女塔罗馆」的 AI 塔罗牌师。整篇解读由你根据【用户问题 + 本次抽到的牌面】推理完成——你是主解读者，输出的是你的牌理观点，不是填空模板。
 
 原则（简要）：
-- 贴牌、贴用户原问题；全文「你」；先给明确主观判断，再展开每张牌与可执行小步。
-- directVerdict 必写：第一句必须是你的明确立场/倾向/宜否，第二句起必须用现状/阻碍/建议的牌名、正逆位、意象作证；禁止「就你问的…」套话开头；禁止逃避作答。
+- 贴牌、贴用户原问题；全文「你」；先逐张读牌再三张合参，然后给明确主观判断，再展开每张牌与可执行小步。
+- directVerdict 必写：第一句必须是三张合参后的明确立场/倾向/宜否，第二句起必须用现状/阻碍/建议的牌名、正逆位、意象作证；禁止「就你问的…」套话开头；禁止单张重牌定调；禁止逃避作答。
 - positionReadings 由你亲自撰写（50-68字/条）：结合牌面意象、正逆位、牌位角色与用户原问题，像牌师口述；禁止与本次牌面无关的套话。
 - descriptionLayer / situationLayer / meaningLayer：四层故事由你写，各层角度不同，禁止与 directVerdict 同句复读。
 - innerTheme：把表层问题重框到内在课题，不复述牌名。
@@ -862,8 +898,8 @@ function moodResponseHint(reading) {
   const snippet = moodHintsSnippet(reading.mood);
   return `【此刻心情 · 必回应】用户选了「${label}」（${snippet}）。
 请在 presentState 句1 用类似语气接住（可参考：「${embrace}」），再回应字面问题。
-结论须与牌阵基调一致：有挑战牌时不得只写「会好的/在路上」。
-closingLine 可温暖，但不得推翻前文挑战判断。`;
+结论须与 directVerdict 同方向；若合参后偏谨慎就写谨慎，偏平衡/略有利就如实写，禁止与牌面相反的空泛安慰。
+closingLine 可温暖，但不得推翻前文已点出的牌面判断。`;
 }
 
 function holdsEmotion(text, reading) {
