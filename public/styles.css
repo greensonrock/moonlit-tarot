@@ -205,8 +205,25 @@ button {
   font-size: 16px;
 }
 
-.home-chips {
+.home-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
   margin-top: 4px;
+}
+
+.home-chips {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.chip-refresh {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: var(--muted, #6f5bb0);
+  border-style: dashed;
+  background: transparent;
 }
 
 /* ── Taroscope 式：主牌 Hero + 牌背层次 ── */

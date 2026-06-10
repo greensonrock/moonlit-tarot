@@ -33,6 +33,8 @@ export function extractSituationalFacts(question = "") {
   if (/他|她|对方|喜欢|在一起|分手|复合/.test(q)) facts.push("关系/对方是问题核心");
   if (/该不该|要不要|还是|选择|去留/.test(q)) facts.push("需要做选择或承担选择后果");
   if (/未来|会不会|能不能|发展|方向/.test(q)) facts.push("关心走向与节奏，而非单一事件");
+  if (/德州|德扑|扑克|打牌|牌局|梭哈|麻将|博彩|赌局/.test(q)) facts.push("涉及牌局/博彩类输赢判断");
+  if (/会不会赢|能不能赢|会赢吗|有胜算|能不能成/.test(q)) facts.push("需要明确的赢/成倾向，而非模糊观望");
   if (!facts.length) facts.push("带着一件具体的生活/work 困惑前来");
   return facts;
 }
@@ -60,6 +62,8 @@ export function describeReadingTask(profile = {}, question = "") {
   const intent = profile.readingIntent || profile.intent || "outcome_forecast";
 
   switch (intent) {
+    case "win_lose_forecast":
+      return "先直接答偏赢/偏输/五五开/不宜重仓之一，再解释三牌；必须给明确主观倾向与控仓纪律，禁止只说仍在展开或先观察。";
     case "outcome_forecast":
       return profile.isCareer || profile.asksOffer || profile.asksInterview || /工作|职业|面试|岗位/.test(q)
         ? "先答进程/阶段/风险点，再解释三牌；强调事实与担心分离，不保证结果。"
@@ -135,7 +139,7 @@ export function buildModelStrategyBrief(reading) {
   const intentLine = p.readingIntentLabel || p.readingIntent || p.intent || "自我确认";
 
   return `【解读策略 · 模型主通道】
-你不是填模板，而是塔罗师 + 荣格式觉察同伴：根据「用户情境 + 牌面象征」推理，产出贴牌、贴问题、可执行的解读。
+你不是填模板，而是塔罗师：根据「用户情境 + 本次抽到的牌面象征」自行推理，产出你的主观观点；每个判断都要能指回具体牌名/正逆位/意象。
 
 ══════════════════
 一、用户的工作/生活情境（只列事实，此处不下结论）

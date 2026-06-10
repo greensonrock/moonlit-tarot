@@ -25,8 +25,9 @@ import {
   inferQuestionContext
 } from "./reading-synthesis.js";
 
-const DEFAULT_BASE = "https://www.dmxapi.com";
-const DEFAULT_MODEL = "deepseek-v4-flash";
+import { getReadingApiConfig, isReadingApiConfigured } from "./dmx-reading-api.js";
+
+export { getReadingApiConfig, isReadingApiConfigured };
 
 const moodLabels = {
   lost: "有点迷茫",
@@ -152,7 +153,7 @@ function orientTone(card) {
 
 const EVASIVE_VERDICT = /别急着下结论|不必今天想通|把问题推回|顺其自然|答案会自己浮现|不用靠猜|别拼命追问|先稳住节奏|成绩就在那|不急着判断|再等等就好|先别慌/;
 
-const VERDICT_LEAN_MARKERS = /偏|倾向|更像|适合|宜|不宜|可以|暂缓|值得|先看|先缓|支持|谨慎|可先|别急着|小步|验证|靠近|开口|主动|推进|放下|离开|等待|评估|有温度|未说透|不是|仍在|尚未|明确|不建议|别用|窗口|一锤定音|没黄|没戏|偏淡|偏有|宜先|不宜猛|要先|还在|更像|更偏/;
+const VERDICT_LEAN_MARKERS = /偏|倾向|更像|适合|宜|不宜|可以|暂缓|值得|先看|先缓|支持|谨慎|可先|别急着|小步|验证|靠近|开口|主动|推进|放下|离开|等待|评估|有温度|未说透|不是|仍在|尚未|明确|不建议|别用|窗口|一锤定音|没黄|没戏|偏淡|偏有|宜先|不宜猛|要先|还在|更像|更偏|胜算|顺风|逆风|赢面|控仓|小注|五五开|不宜打|有胜算|不宜重仓|略偏有利|略偏不利/;
 
 const PSYCH_THEME_MARKERS = /价值|配得|害怕|许可|不够|认真|被选择|被对待|脑补|否定|配不配|底层|真正在问|其实是|不是.*而是|配得到|值得被|在等什么|读成|误读|自我|内在|课题|镜子|监控|猜代替|确定感|核实|空等|silence|没消息|不够好/;
 
@@ -306,6 +307,7 @@ function questionSignals(reading) {
     asksOtherFeeling: p.isRelationship && /他|她|对方|ta/i.test(q) && /感觉|喜欢|爱|态度|怎么想|在意/.test(q),
     asksShouldIDo: p.isDecision || /该不该|要不要|是否|继续|放弃|离开|主动/.test(q),
     asksFuture: p.isFuture || reading.theme === "future" || /未来|会不会|能不能|结果|发展/.test(q),
+    asksWinLose: p.readingIntent === "win_lose_forecast" || /会不会赢|能不能赢|会赢吗|会输吗|赢不赢|有胜算|能不能成|会不会成/.test(q),
     asksEmotion: p.isEmotion || /累|焦虑|难过|情绪|疲惫|压力/.test(q),
     choice: detectChoiceOptions(q)
   };
@@ -376,14 +378,22 @@ function questionFocusHint(reading) {
   const sig = questionSignals(reading);
   const positions = (reading.cards || []).map((c) => c.position).join("、");
   const lines = [
-    intentGuidanceBlock(reading),
     buildModelStrategyBrief(reading),
     moodResponseHint(reading),
-    `【问题类型】${p.intent || "自我确认"}；用户真正关心：${p.subject || "自己"}；此刻最需要：${p.coreNeed || "被看见"}。`
+    `【问题类型】${p.readingIntentLabel || p.intent || "自我确认"}；用户真正关心：${p.subject || "自己"}；此刻最需要：${p.coreNeed || "被看见"}。`,
+    `【推理主通道 · 必守】
+你是主解读者：观点必须来自「本次抽到的牌面 + 用户原问题」的交叉推理，不是套用固定话术类型。
+每张牌至少被引用一次；正逆位、元素、意象要进入你的判断依据；可以主观、可以明确倾向，但要说明是哪张牌让你这么看。`
   ];
 
   if (sig.choice) {
     lines.push(choiceHint(reading.question));
+  }
+
+  if (sig.asksWinLose) {
+    lines.push(`【输赢判断 · 必守】
+用户问的是「会不会赢/能不能成」——directVerdict 第一句必须给出明确倾向（偏顺风有胜算 / 略偏有利 / 五五开 / 略偏不利 / 偏逆风不宜重仓 之一），禁止用「仍在展开、不是已否、先观察、也许、可能」逃避。
+第二句起用现状/阻碍/建议三牌作证；gentleActions 须含止损/控仓/止盈或等价纪律动作。`);
   }
 
   if (positions) {
@@ -406,8 +416,6 @@ reflectionQuestions 两条须扣本盘牌面与用户原话，禁止通用模板
 - innerTension：心理拉扯（≤48字），可承认担心合理，不复述牌面。
 - closingLine：短收束（≤32字）；可温暖，但不得否定前文已点出的挑战。
 - 口语化：像深夜语音，少用「暗示/迹象/投入度/疏离」等报告腔。`);
-  lines.push(spreadHonestyHint(reading));
-  lines.push(spreadSynthesisHint(reading));
   lines.push(buildFewShotBrief());
   return lines.join("\n");
 }
@@ -687,22 +695,22 @@ function cardLabel(card) {
   return `${card.name}（${card.orientation}）`;
 }
 
-function formatCardForPrompt(card, profile = {}) {
+/** 仅向模型提供牌面事实，不注入规则引擎预制解读 */
+function formatCardForPrompt(card) {
   const orient = card.orientation === "逆位" ? "逆位" : "正位";
   const k = getCardKnowledge(card);
+  const keys = (card.keywords || []).join("、") || "—";
   const lines = [
     `【${card.position}】${card.name}（${orient}）`,
-    activeCardMeaning(card, profile)
+    `关键词：${keys}`
   ];
-  if (k?.element && k?.elementProfile) {
-    lines.push(`元素：${k.element}（主${k.elementProfile.domain}）`);
-  }
-  if (k?.imagery) {
-    lines.push(`牌面意象：${k.imagery}`);
-  }
+  if (card.arcana) lines.push(`阿卡那：${card.arcana}`);
+  if (k?.element) lines.push(`元素：${k.element}`);
+  if (k?.imagery || card.imagery) lines.push(`牌面意象：${k?.imagery || card.imagery}`);
+  if (card.numerologyStage) lines.push(`数字/阶段：${card.numerologyStage}`);
   const lens = positionLensHint(card.position);
-  if (lens) lines.push(`牌位透镜（${card.position}）：${lens}`);
-  lines.push(`行动提示：${card.actionHint || "—"}`);
+  if (lens) lines.push(`此牌位角色：${lens}`);
+  if (card.actionHint) lines.push(`传统行动提示：${card.actionHint}`);
   return lines.join("\n");
 }
 
@@ -760,11 +768,7 @@ function buildPromptPayload(reading, { strictJson = false } = {}) {
   const p = reading.questionProfile || {};
   const ctx = inferQuestionContext(reading);
   const choice = detectChoiceOptions(reading.question);
-  const cardsText = (reading.cards || []).map((card) => formatCardForPrompt(card, p)).join("\n\n");
-  const synthesisReference = stripVerdictPrefix(buildSpreadVerdict(reading));
-  const cardReferenceHints = (reading.cards || [])
-    .map((card) => `- ${card.position}·${card.name}：${cardReadingText(card, reading)}`)
-    .join("\n");
+  const cardsText = (reading.cards || []).map((card) => formatCardForPrompt(card)).join("\n\n");
 
   const jsonNote = strictJson
     ? "\n【重要】上次输出不是合法 JSON。本次只输出一个 JSON 对象，不要 Markdown，不要解释，字符串内不要用换行。"
@@ -773,14 +777,14 @@ function buildPromptPayload(reading, { strictJson = false } = {}) {
   const crisisBlock = crisisPromptBlock(reading);
 
   return {
-    system: `你是「星月少女塔罗馆」的 AI 塔罗牌师。整篇解读由你根据【用户问题 + 牌面 + 情境策略】推理完成——你是主解读者，不是规则模板的复读机。
+    system: `你是「星月少女塔罗馆」的 AI 塔罗牌师。整篇解读由你根据【用户问题 + 本次抽到的牌面】推理完成——你是主解读者，输出的是你的牌理观点，不是填空模板。
 
 原则（简要）：
-- 贴牌、贴用户原问题；全文「你」；先给强判断，再展开每张牌与可执行小步。
-- directVerdict 必写：第一句必须是明确立场/倾向/阶段/宜否（强判断），第二句起用牌位+牌名作依据；禁止「就你问的…」套话开头；禁止逃避作答。
-- positionReadings 由你亲自撰写（50-68字/条）：结合牌面意象、正逆位、牌位透镜与用户原问题，像牌师口述；可参考下方牌理提示整合进自然语言，禁止整句照抄规则模板。
+- 贴牌、贴用户原问题；全文「你」；先给明确主观判断，再展开每张牌与可执行小步。
+- directVerdict 必写：第一句必须是你的明确立场/倾向/宜否，第二句起必须用现状/阻碍/建议的牌名、正逆位、意象作证；禁止「就你问的…」套话开头；禁止逃避作答。
+- positionReadings 由你亲自撰写（50-68字/条）：结合牌面意象、正逆位、牌位角色与用户原问题，像牌师口述；禁止与本次牌面无关的套话。
 - descriptionLayer / situationLayer / meaningLayer：四层故事由你写，各层角度不同，禁止与 directVerdict 同句复读。
-- 荣格式觉察：innerTheme 把表层问题重框到内在课题（配得感/害怕什么/在等什么许可），不复述牌名。
+- innerTheme：把表层问题重框到内在课题，不复述牌名。
 - 禁止：算命腔、保证结果、具体日期、「别急着下结论」「不必今天想通」逃避作答。
 ${crisisBlock ? `\n${crisisBlock}` : ""}
 
@@ -804,13 +808,6 @@ ${crisisBlock ? `\n${crisisBlock}` : ""}
     user: `${questionFocusHint(reading)}
 ${crisisBlock}
 
-【牌理参考 · 整合进解读，勿照抄】
-本地引擎合参倾向（${ctx.intentLabel || ctx.intent}），供你对齐方向、用自己的话重写：
-「${synthesisReference}」
-
-分牌参考（可吸收语义，须改写成自然解读）：
-${cardReferenceHints}
-
 【用户问题】${reading.question}
 ${choice ? choiceHint(reading.question) : ""}
 【解读域/意图】${ctx.domain} / ${ctx.intentLabel || ctx.intent}
@@ -820,8 +817,10 @@ ${choice ? choiceHint(reading.question) : ""}
 【此刻心情】${moodLabels[reading.mood] || reading.mood} — ${moodEmbraceLines[reading.mood] || "请温柔接住用户此刻的感受"}
 
 【牌阵】${reading.spread}
-【本次牌面 · 正逆位以输入为准】
-${cardsText}`
+【本次抽到的牌 · 正逆位以输入为准 · 你的全部观点须由此推理】
+${cardsText}
+
+请仅根据以上牌面与用户问题给出你的解读观点；不要套用与本次牌面无关的固定说法。`
   };
 }
 
@@ -863,9 +862,8 @@ function holdsEmotion(text, reading) {
 }
 
 async function requestAiJson(reading, { strictJson = false, signal } = {}) {
-  const apiKey = process.env.DMXAPI_KEY;
-  const base = (process.env.DMXAPI_BASE || DEFAULT_BASE).replace(/\/$/, "");
-  const model = process.env.DMXAPI_MODEL || DEFAULT_MODEL;
+  const { apiKey, base, model } = getReadingApiConfig();
+  if (!apiKey) throw new Error("未配置 AI 解读 API Key（DMXAPI_READING_KEY）");
   const url = `${base}/v1/chat/completions`;
   const { system, user } = buildPromptPayload(reading, { strictJson });
 
@@ -908,8 +906,7 @@ async function requestAiJson(reading, { strictJson = false, signal } = {}) {
 }
 
 export async function generateAiSummary(reading) {
-  const apiKey = process.env.DMXAPI_KEY;
-  if (!apiKey) return null;
+  if (!isReadingApiConfigured()) return null;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 50000);
@@ -1126,19 +1123,26 @@ function formatPositionReadingText(raw, card) {
   return clampSentenceClean(colloquializeCopy(prefixed), POSITION_READING_MAX);
 }
 
-function guardPositionReadings(items, reading, fallback) {
+/** AI 主通道：保留模型分牌，仅做格式整理；空字段才回退 */
+function formatPositionReadingsAiPrimary(items, reading, fallback) {
   const cards = reading.cards || [];
   return cards.map((card, index) => {
     const raw = items[index]?.text || "";
-    const text = shouldFallbackPosition(raw, card, reading)
-      ? (buildPositionReading(card, reading) || fallback.positionReadings?.[index]?.text || "")
-      : formatPositionReadingText(raw, card);
+    const text = raw.trim()
+      ? formatPositionReadingText(raw, card)
+      : (fallback.positionReadings?.[index]?.text || "");
     return {
       position: card.position,
       cardName: card.name,
-      text
+      text: clampSentenceClean(text, POSITION_READING_MAX)
     };
   });
+}
+
+function aiField(text, maxLen = 0) {
+  const out = colloquializeCopy(sanitizeCopy(text));
+  if (!out) return "";
+  return maxLen ? clampAtSentence(out, maxLen) : out;
 }
 
 function colloquializeCopy(text) {
@@ -1263,116 +1267,68 @@ function dedupeClosingLine(closingLine, briefSummary, gentleActions) {
   return clampAtSentence(out, 34);
 }
 
-function pickStoryLayer(parsed, key, fallbackText, maxLen) {
+function pickStoryLayerAiPrimary(parsed, key, fallbackText, maxLen) {
   const out = clampSentenceClean(colloquializeCopy(parsed[key]), maxLen);
-  if (isWeakLine(out) || isMechanicalTheme(out)) return fallbackText;
-  return out;
+  return out || fallbackText;
 }
 
+/**
+ * AI 主通道归一化：以模型 JSON 为主，仅做清洗/截断；字段缺失时才用本地回退。
+ */
 export function normalizeAiResult(parsed, reading) {
   const fallback = buildGentleFallback(reading);
   const fallbackLayers = buildStoryLayers(reading);
   let positionReadings = normalizePositionReadings(parsed, reading, fallback);
-  positionReadings = guardPositionReadings(positionReadings, reading, fallback);
+  positionReadings = formatPositionReadingsAiPrimary(positionReadings, reading, fallback);
 
   let directVerdict = clampAtSentence(
     stripVerdictPrefix(colloquializeCopy(parsed.directVerdict || parsed.verdict)),
     120
   );
-  if (!directVerdict || !isStrongVerdict(directVerdict, reading)) {
+  if (!directVerdict) {
     directVerdict = fallback.directVerdict || buildSynthesizedVerdict(reading);
   }
 
-  let briefSummary = buildBriefSummary(reading, parsed);
-  if (
-    soundsOverlyPositive(briefSummary)
-    && (reading.cards || []).some((c) => cardValence(c) === "challenge")
-  ) {
-    briefSummary = buildBriefSummaryFromCards(reading);
-  }
-  if (
-    isWeakLine(briefSummary)
-    || !addressesUserQuestion(briefSummary, reading)
-    || /不必今天想通|顺其自然|答案会自己浮现|别急着下结论/.test(briefSummary)
-  ) {
-    const embrace = (moodEmbraceLines[reading.mood] || "").replace(/。$/, "");
-    briefSummary = clampAtSentence(
-      embrace ? `${embrace}。${directVerdict}` : directVerdict,
-      80
-    );
+  let briefSummary = aiField(parsed.briefSummary, 80);
+  if (!briefSummary) {
+    briefSummary = fallback.briefSummary || clampAtSentence(directVerdict, 80);
   }
   briefSummary = dedupeBriefSummary(briefSummary, directVerdict, reading);
+
   let presentState = compactPresentState(
     reading,
-    sanitizeCopy(parsed.presentState || parsed.opening),
-    briefSummary
-  ) || fallback.presentState;
-
-  if (isWeakLine(presentState) || !holdsEmotion(presentState, reading)) {
-    presentState = compactPresentState(reading, groundPresentState(reading), briefSummary);
-  }
-  presentState = dedupePresentState(presentState, briefSummary, directVerdict);
-  if (!presentState || presentState.length < 12) {
-    presentState = compactPresentState(reading, groundPresentState(reading), briefSummary);
-  }
-
-  let innerTheme = clampSentenceClean(colloquializeCopy(parsed.innerTheme), 72) || fallback.innerTheme;
-  if (
-    isWeakLine(innerTheme)
-    || isMechanicalTheme(innerTheme)
-    || isSimilarCopy(innerTheme, briefSummary)
-    || !hasPsychologicalDepth(innerTheme)
-  ) {
-    innerTheme = groundInnerTheme(reading);
-  }
-
-  const descriptionLayer = pickStoryLayer(parsed, "descriptionLayer", fallbackLayers.description, 88);
-  const situationLayer = pickStoryLayer(parsed, "situationLayer", fallbackLayers.situation, 88);
-  const meaningLayer = pickStoryLayer(parsed, "meaningLayer", fallbackLayers.meaning, 72);
-
-  let reminders = filterReminders(
-    normalizeStringList(parsed.reminders, 3, 20),
-    positionReadings,
+    parsed.presentState || parsed.opening || "",
     briefSummary
   );
+  if (!presentState || presentState.length < 8) {
+    presentState = fallback.presentState;
+  }
+  presentState = dedupePresentState(presentState, briefSummary, directVerdict);
+
+  let innerTheme = clampSentenceClean(colloquializeCopy(parsed.innerTheme), 72) || fallback.innerTheme;
+
+  const descriptionLayer = pickStoryLayerAiPrimary(parsed, "descriptionLayer", fallbackLayers.description, 88);
+  const situationLayer = pickStoryLayerAiPrimary(parsed, "situationLayer", fallbackLayers.situation, 88);
+  const meaningLayer = pickStoryLayerAiPrimary(parsed, "meaningLayer", fallbackLayers.meaning, 72);
+
+  let reminders = normalizeStringList(parsed.reminders, 3, 20)
+    || fallback.reminders
+    || [];
 
   let innerTension = clampAtSentence(colloquializeCopy(parsed.innerTension || parsed.synthesis), 50)
     || fallback.innerTension;
-  if (hasDomainLeak(innerTension, reading)) {
-    innerTension = groundInnerTension(reading);
-  }
-  if (isWeakLine(innerTension) || isSimilarCopy(innerTension, briefSummary)) {
-    innerTension = meaningLayer || groundInnerTension(reading);
-  }
 
-  const reflectionQuestionsRaw =
-    normalizeStringList(parsed.reflectionQuestions, 2, 34, 2) || fallback.reflectionQuestions;
-  let reflectionQuestions = reflectionQuestionsRaw.filter((q) => !isGenericReflection(q));
-  if (reflectionQuestions.length < 2) {
-    reflectionQuestions = (fallback.reflectionQuestions || []).filter((q) => !isGenericReflection(q));
-  }
-  if (reflectionQuestions.length < 2) {
-    reflectionQuestions = fallback.reflectionQuestions;
-  }
-  if (reflectionQuestions.some((q) => hasDomainLeak(q, reading))) {
-    reflectionQuestions = fallback.reflectionQuestions;
-  }
+  let reflectionQuestions = normalizeStringList(parsed.reflectionQuestions, 2, 34, 2)
+    || fallback.reflectionQuestions;
 
   let gentleActions = normalizeStringList(parsed.gentleActions, 2, 48)
     || normalizeStringList(parsed.action ? [parsed.action] : null, 2, 48)
     || fallback.gentleActions;
-  gentleActions = gentleActions.filter((item) => stripDomainLeakage(item, reading));
-  gentleActions = dedupeListAgainstCorpus(gentleActions, [briefSummary, ...positionReadings.map((item) => item.text)], 36);
-  gentleActions = groundGentleActions(gentleActions, reading, fallback);
 
-  let closingLine = dedupeClosingLine(
-    sanitizeCopy(parsed.closingLine || parsed.star) || fallback.closingLine,
-    briefSummary,
-    gentleActions
-  );
-  if (isWeakLine(closingLine) || PLATITUDE.test(closingLine)) {
-    closingLine = groundClosingLine(reading);
-  }
+  let closingLine = clampAtSentence(
+    colloquializeCopy(sanitizeCopy(parsed.closingLine || parsed.star)),
+    34
+  ) || fallback.closingLine;
 
   const headline = normalizeHeadline(sanitizeCopy(parsed.headline), reading, fallback);
 

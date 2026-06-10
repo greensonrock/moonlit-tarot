@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildCompactFallback, generateAiSummary, mergeAiSummary } from "./ai-reading.js";
+import { buildCompactFallback, generateAiSummary, mergeAiSummary, isReadingApiConfigured, getReadingApiConfig } from "./ai-reading.js";
 import { cardReadingText, READING_SYNTHESIS_VERSION } from "./reading-synthesis.js";
 import {
   drawCardsBySelection,
@@ -129,7 +129,7 @@ async function drawReading({ theme, mood, question, spread, selectedSlots, drawM
     aiPowered: false
   };
 
-  if (process.env.DMXAPI_KEY) {
+  if (isReadingApiConfigured()) {
     try {
       const ai = await generateAiSummary(reading);
       if (ai) {
@@ -298,8 +298,13 @@ const server = http.createServer(async (req, res) => {
         status: "ok",
         service: "moonlit-tarot",
         synthesisVersion: READING_SYNTHESIS_VERSION,
-        aiEnabled: Boolean(process.env.DMXAPI_KEY),
-        model: process.env.DMXAPI_MODEL || null,
+        aiEnabled: isReadingApiConfigured(),
+        readingApi: {
+          configured: isReadingApiConfigured(),
+          model: getReadingApiConfig().model,
+          base: getReadingApiConfig().base,
+          keySource: process.env.DMXAPI_READING_KEY ? "DMXAPI_READING_KEY" : process.env.DMXAPI_KEY ? "DMXAPI_KEY" : null
+        },
         draw: {
           reverseRate: draw.reverseRate,
           orientMode: draw.orientMode,
@@ -342,11 +347,12 @@ const server = http.createServer(async (req, res) => {
 await loadEnvFile();
 server.listen(port, host, () => {
   console.log(`Moonlit Tarot is running at http://127.0.0.1:${port}`);
-  if (process.env.DMXAPI_KEY) {
-    console.log(`AI reading: DMXAPI enabled @ ${process.env.DMXAPI_BASE || "https://www.dmxapi.com"}`);
-    console.log(`AI model: ${process.env.DMXAPI_MODEL || "deepseek-v4-flash"}`);
+  if (isReadingApiConfigured()) {
+    const cfg = getReadingApiConfig();
+    console.log(`AI reading: enabled @ ${cfg.base} (${cfg.model})`);
+    console.log(`  key: ${process.env.DMXAPI_READING_KEY ? "DMXAPI_READING_KEY" : "DMXAPI_KEY"}`);
   } else {
-    console.log("AI reading: template only (set DMXAPI_KEY in .env)");
+    console.log("AI reading: template only (set DMXAPI_READING_KEY in .env)");
   }
   try {
     for (const iface of Object.values(os.networkInterfaces())) {

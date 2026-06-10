@@ -21,8 +21,8 @@ const DOMAIN_SIGNALS = {
     weak: ["自己", "成长", "内在", "改变", "自信", "修复"]
   },
   future: {
-    strong: ["未来三个月", "接下来会", "发展方向", "该选哪个", "前景"],
-    weak: ["未来", "发展", "方向", "趋势"]
+    strong: ["未来三个月", "接下来会", "发展方向", "该选哪个", "前景", "打德州", "会不会赢"],
+    weak: ["未来", "发展", "方向", "趋势", "德州", "扑克", "打牌", "牌局", "赢", "胜算"]
   }
 };
 
@@ -53,6 +53,7 @@ function pickDominant(scores, fallback = "future") {
 /** 解读引擎用意图（与 reading-knowledge 单源） */
 export const READING_INTENTS = {
   outcome_forecast: "结果/走向会怎样",
+  win_lose_forecast: "会不会赢/能不能成",
   yes_no_decision: "该不该/要不要",
   partner_attitude: "对方心意/态度",
   binary_choice: "二选一",
@@ -60,6 +61,12 @@ export const READING_INTENTS = {
   self_clarity: "自我确认/内在",
   emotion_regulation: "情绪梳理"
 };
+
+/** 用户要的是明确输赢/成败倾向，不是「仍在展开」 */
+export function asksWinLoseOutcome(question = "") {
+  const q = String(question || "");
+  return /会不会赢|能不能赢|会赢吗|会输吗|赢不赢|能赢吗|打得赢|有胜算|顺不顺|能不能成|会不会成|能成吗|胜算大吗|今天.*赢|今晚.*赢/.test(q);
+}
 
 /**
  * 单源：问题 → domain + intent（question-profile 与 reading-knowledge 共用）
@@ -81,6 +88,8 @@ export function resolveReadingContext(input = {}) {
     domain = "self";
   } else if (p.isDecision) {
     domain = "decision";
+  } else if (/德州|德扑|扑克|打牌|牌局|梭哈|麻将|博彩|赌局|彩票|会不会赢|能不能赢|有胜算/.test(q)) {
+    domain = "future";
   } else if (/offer|录用|入职|面试|工作机会|职业|事业|岗位/i.test(q)) {
     domain = "career";
   } else if (theme === "emotion") {
@@ -104,6 +113,8 @@ export function resolveReadingContext(input = {}) {
     intent = "binary_choice";
   } else if (/什么时候|何时|多久|哪里|什么地方/.test(q)) {
     intent = "timing";
+  } else if (asksWinLoseOutcome(q)) {
+    intent = "win_lose_forecast";
   } else if (domain === "emotion" || p.isEmotion) {
     intent = "emotion_regulation";
   } else if (domain === "self" || p.isSelf) {

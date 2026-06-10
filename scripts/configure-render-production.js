@@ -88,9 +88,13 @@ async function main() {
   }
 
   const dotenv = await loadDotEnv();
-  const dmxKey = process.env.DMXAPI_KEY || dotenv.DMXAPI_KEY;
+  const dmxKey =
+    process.env.DMXAPI_READING_KEY
+    || dotenv.DMXAPI_READING_KEY
+    || process.env.DMXAPI_KEY
+    || dotenv.DMXAPI_KEY;
   if (!dmxKey) {
-    console.error("Missing DMXAPI_KEY in .env");
+    console.error("Missing DMXAPI_READING_KEY (or DMXAPI_KEY) in .env");
     process.exit(1);
   }
 
@@ -98,10 +102,17 @@ async function main() {
   const serviceId = service.id;
   console.log(`Found service: ${service.name} (${serviceId})`);
 
+  const model = process.env.DMXAPI_READING_MODEL || dotenv.DMXAPI_READING_MODEL
+    || process.env.DMXAPI_MODEL || dotenv.DMXAPI_MODEL || "deepseek-v4-flash";
+  const base = process.env.DMXAPI_READING_BASE || dotenv.DMXAPI_READING_BASE
+    || process.env.DMXAPI_BASE || dotenv.DMXAPI_BASE || "https://www.dmxapi.com";
   const pairs = [
-    ["DMXAPI_KEY", dmxKey],
-    ["DMXAPI_MODEL", process.env.DMXAPI_MODEL || dotenv.DMXAPI_MODEL || "deepseek-v4-flash"],
-    ["DMXAPI_BASE", process.env.DMXAPI_BASE || dotenv.DMXAPI_BASE || "https://www.dmxapi.com"]
+    ["DMXAPI_READING_KEY", dmxKey],
+    ["DMXAPI_READING_MODEL", model],
+    ["DMXAPI_READING_BASE", base],
+    ["DMXAPI_KEY", process.env.DMXAPI_KEY || dotenv.DMXAPI_KEY || dmxKey],
+    ["DMXAPI_MODEL", model],
+    ["DMXAPI_BASE", base]
   ];
 
   for (const [key, value] of pairs) {

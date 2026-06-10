@@ -451,6 +451,7 @@ export function positionAnchor(card, reading) {
 
   const byIntent = {
     outcome_forecast: { 现状: "就现在这一步，", 阻碍: "卡住进度的是，", 建议: "更值得做的是，" },
+    win_lose_forecast: { 现状: "就胜算起点，", 阻碍: "拉低赢面的是，", 建议: "更稳妥的做法是，" },
     partner_attitude: { 现状: "就对方态度，", 阻碍: "主要卡在，", 建议: "你可以，" },
     yes_no_decision: { 建议: "就你的问题，", 今日指引: "就你的问题，" },
     binary_choice: { 现状: "就两个选项，", 阻碍: "真正卡在，", 建议: "更值得先，" },
@@ -474,6 +475,21 @@ function cardByPosition(cards, ...positions) {
   return cards.find((c) => positions.includes(c.position));
 }
 
+function spreadValenceTally(cards, profile) {
+  const list = cards.filter(Boolean);
+  return {
+    support: list.filter((c) => contextualValence(c, profile) === "support").length,
+    challenge: list.filter((c) => contextualValence(c, profile) === "challenge").length,
+    neutral: list.filter((c) => contextualValence(c, profile) === "neutral").length
+  };
+}
+
+function winLoseTopic(question = "") {
+  if (/德州|德扑|扑克|打牌|牌局|梭哈|麻将|博彩|赌局/.test(question)) return "今天这桌";
+  if (/比赛|考试|面试|投标|竞选/.test(question)) return "这次";
+  return "这件事";
+}
+
 /** 从三牌语义推断总判断（无 case 表） */
 export function inferSpreadLead(reading, now, block, advice) {
   const ctx = inferQuestionContext(reading);
@@ -485,6 +501,29 @@ export function inferSpreadLead(reading, now, block, advice) {
   const blockText = block ? interpretCardInContext(block, reading) : "";
 
   const careerOffer = ctx.domain === "career" || /offer|面试|录用/.test(ctx.question);
+
+  if (ctx.intent === "win_lose_forecast") {
+    const topic = winLoseTopic(ctx.question);
+    const tally = spreadValenceTally([now, block, advice], p);
+    const tiltSupport = tally.support > tally.challenge;
+    const tiltChallenge = tally.challenge > tally.support;
+    const heavyChallenge = tally.challenge >= 2;
+    const heavySupport = tally.support >= 2 && tally.challenge === 0;
+
+    if (heavySupport || (tiltSupport && advV === "support" && blockV !== "challenge")) {
+      return `${topic}牌面偏顺风、有胜算——宜打，但设止损线，不靠情绪加注`;
+    }
+    if (heavyChallenge || (tiltChallenge && advV === "challenge")) {
+      return `${topic}牌面偏逆风、胜算偏低——不宜重仓，宜控仓或旁观`;
+    }
+    if (tiltSupport) {
+      return `${topic}牌面略偏有利——有小赢面，宜小注试探、严守纪律`;
+    }
+    if (tiltChallenge) {
+      return `${topic}牌面略偏不利——赢面有限，不宜追击亏损`;
+    }
+    return `${topic}牌面五五开——不算顺风局，宜小注、设止损，别靠运气梭哈`;
+  }
 
   if (ctx.intent === "outcome_forecast") {
     const topic = careerOffer && /offer|录用|入职/.test(ctx.question) ? "offer" : "这件事";
@@ -578,6 +617,12 @@ export function inferSpreadLead(reading, now, block, advice) {
 export function inferInnerTheme(reading, now, block, advice) {
   const ctx = inferQuestionContext(reading);
 
+  if (ctx.intent === "win_lose_forecast") {
+    if (/德州|扑克|打牌|牌局|梭哈|赌/.test(ctx.question)) {
+      return "表面在问赢不赢，底层在问：我能不能靠纪律管住手，而不是靠运气证明自己。";
+    }
+    return "表面在问能不能成，底层在问：我是在等结果，还是在等一个不用负责的借口。";
+  }
   if (ctx.intent === "outcome_forecast") {
     const blockText = block ? interpretCardInContext(block, reading) : "";
     if (/未齐|偏慢|收集|等待/.test(blockText)) {
@@ -633,6 +678,7 @@ export function inferStoryLayers(reading) {
     ].join("；") + "。";
 
     const situationByIntent = {
+      win_lose_forecast: `放回${themeLabel}：「${now.name}」看起手气势，「${block.name}」看会拖累赢面的因素，「${advice.name}」定仓位与节奏——输赢看纪律，不靠一把梭哈。`,
       outcome_forecast: `放回${themeLabel}：「${now.name}」看起点，「${block.name}」看卡点，「${advice.name}」定下一步——先核对事实节点，不是情绪下注。`,
       partner_attitude: `放回关系里：${now.name}看互动温度，${block.name}看卡点，${advice.name}看你怎么表达需求。`,
       emotion_regulation: `放回${themeLabel}：${now.name}看当下感受，${block.name}看消耗点，${advice.name}定恢复的小步——本周先稳节奏，再求大答案。`,
@@ -662,6 +708,16 @@ export function inferActions(reading) {
   const ctx = inferQuestionContext(reading);
   const advice = cardByPosition(reading.cards, "建议", "下一步", "今日指引");
 
+  if (ctx.intent === "win_lose_forecast") {
+    const tally = spreadValenceTally(reading.cards || [], ctx.profile);
+    const first =
+      tally.challenge >= 2
+        ? "今天先设亏损上限，到线就收手——别用加注追回"
+        : tally.support >= 2
+          ? "今天可小注上桌，但赢到目标利润就收——别贪第二把"
+          : "今天只打预设手数/时长，到点离桌——用规则代替情绪";
+    return [first, "开局前写下：止损线、止盈线、最多打几手，并严格执行"];
+  }
   if (ctx.intent === "outcome_forecast" && ctx.domain === "career") {
     const elem = advice?.suitKey || advice?.element;
     const second =

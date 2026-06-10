@@ -1,7 +1,7 @@
 import { inferMoodFromQuestion, inferThemeFromQuestion } from "/question-profile.js";
 
 const app = document.querySelector("#app");
-const BUILD_ID = "20260605b";
+const BUILD_ID = "20260604d";
 
 function askBanner() {
   const q = (state.question || "").trim();
@@ -32,12 +32,98 @@ const spreads = [
 ];
 
 const questions = {
-  relationship: ["这段关系里，我最需要看清什么？", "我该不该主动一点？", "这段关系真正需要被看见的是什么？"],
-  future: ["未来三个月我需要注意什么？", "我应该选择稳定还是冒险？", "我现在最需要相信什么？"],
-  career: ["我该继续坚持这份工作吗？", "最近的努力会有结果吗？", "我适合换一个方向吗？"],
-  self: ["我为什么总是走不出来？", "我现在最需要修复的内在能量是什么？", "我该如何重新喜欢自己？"],
-  emotion: ["最近为什么总觉得很累？", "我该怎么让自己轻松一点？", "今天我的情绪想告诉我什么？"]
+  relationship: [
+    "他对我还有没有感觉？",
+    "我该不该主动表白？",
+    "这段关系还值得继续吗？",
+    "我们最近联系变少了，是我多想了还是真的淡了？",
+    "这段关系里，我最需要看清什么？"
+  ],
+  future: [
+    "留在这座城市还是回老家，我该怎么选？",
+    "未来三个月我需要注意什么？",
+    "今年下半年会有转机吗？",
+    "我应该选择稳定还是冒险？",
+    "两个机会摆在面前，哪一个更适合我？"
+  ],
+  career: [
+    "刚刚面试的机会会是怎么样？",
+    "接下来 offer 情况会是怎么样的？",
+    "我该继续坚持这份工作吗？",
+    "要不要裸辞，我快撑不住了？",
+    "最近的努力会有结果吗？"
+  ],
+  self: [
+    "我该如何重新喜欢自己？",
+    "我为什么总是走不出来？",
+    "我怎么才能停止对自己那么苛刻？",
+    "我现在最需要修复的内在能量是什么？"
+  ],
+  emotion: [
+    "最近焦虑到睡不着怎么办？",
+    "最近为什么总觉得很累？",
+    "我该怎么让自己轻松一点？",
+    "今天我的情绪想告诉我什么？"
+  ]
 };
+
+/** 首页/速读推荐：跨主题问题池，每次随机抽取 */
+const questionPool = [
+  { theme: "relationship", text: "他对我还有没有感觉？" },
+  { theme: "relationship", text: "我该不该主动表白？" },
+  { theme: "relationship", text: "我们冷战了，谁先开口比较好？" },
+  { theme: "relationship", text: "这段感情是在消耗我，还是在滋养我？" },
+  { theme: "career", text: "刚刚面试的机会会是怎么样？" },
+  { theme: "career", text: "接下来 offer 情况会是怎么样的？" },
+  { theme: "career", text: "这份工作还要继续吗？" },
+  { theme: "career", text: "老板最近的态度，是在暗示我离开吗？" },
+  { theme: "future", text: "留北京还是回成都，我该怎么选？" },
+  { theme: "future", text: "今年下半年会有转机吗？" },
+  { theme: "future", text: "我现在该不该做一个大的改变？" },
+  { theme: "future", text: "今天打德州会赢吗？" },
+  { theme: "self", text: "我该如何重新喜欢自己？" },
+  { theme: "self", text: "我为什么总是反复掉进同一个坑？" },
+  { theme: "self", text: "我想放下一个人，为什么这么难？" },
+  { theme: "emotion", text: "最近焦虑到睡不着怎么办？" },
+  { theme: "emotion", text: "为什么我总觉得自己不够好？" },
+  { theme: "emotion", text: "我该怎么从这段低谷里爬出来？" },
+  { theme: "emotion", text: "今天适合让自己慢下来吗？" }
+];
+
+const QUICK_QUESTIONS = [
+  "我此刻最需要看见什么？",
+  "关于这件事，我忽略了什么信号？",
+  "我现在该把力气放在哪里？",
+  "对这个选择，我内心真正的声音是什么？",
+  "如果只做一小步，我最该先试什么？",
+  "我真正害怕失去的是什么？"
+];
+
+/** 从问题池按主题打散抽取，保证类型多元 */
+function pickSuggestedQuestions(count = 5) {
+  const byTheme = {};
+  for (const { theme, text } of questionPool) {
+    (byTheme[theme] ||= []).push(text);
+  }
+  const themeOrder = shuffleArray(Object.keys(byTheme));
+  const picked = [];
+  for (const theme of themeOrder) {
+    if (picked.length >= count) break;
+    const list = shuffleArray(byTheme[theme]);
+    picked.push(list[0]);
+  }
+  let guard = 0;
+  while (picked.length < count && guard < 40) {
+    guard += 1;
+    const item = questionPool[Math.floor(Math.random() * questionPool.length)];
+    if (!picked.includes(item.text)) picked.push(item.text);
+  }
+  return shuffleArray(picked).slice(0, count);
+}
+
+function randomPoolQuestion() {
+  return questionPool[Math.floor(Math.random() * questionPool.length)].text;
+}
 
 const CHAPTER_META = {
   "现状": { bridge: "故事从这里开始。这张牌照见你此刻站的位置——", role: "起点" },
@@ -813,7 +899,8 @@ function panel(title, subtitle, body, stepText) {
 function renderHome() {
   const shell = document.createElement("div");
   shell.className = "shell hero home-compact";
-  const presets = questions.relationship.slice(0, 3);
+  const presets = pickSuggestedQuestions(5);
+  const placeholder = randomPoolQuestion();
   shell.innerHTML = `
     <div class="home-layout">
       <header class="home-intro">
@@ -823,8 +910,11 @@ function renderHome() {
       </header>
       <div class="home-question panel">
         <label class="home-question__label" for="home-question">你今天想问什么？</label>
-        <textarea id="home-question" placeholder="例如：这段关系里，我最需要看清什么？" maxlength="120">${escapeHtml(state.question)}</textarea>
-        <div class="chips home-chips" data-home-chips></div>
+        <textarea id="home-question" placeholder="例如：${escapeHtml(placeholder)}" maxlength="120">${escapeHtml(state.question)}</textarea>
+        <div class="home-chips-row">
+          <div class="chips home-chips" data-home-chips></div>
+          <button type="button" class="chip chip-refresh" data-refresh-chips title="换一批推荐">换一批</button>
+        </div>
       </div>
       <div class="home-hero-deck">
         <button type="button" class="home-hero-card" data-hero-start aria-label="点击卡牌开始">
@@ -852,17 +942,25 @@ function renderHome() {
     state.question = textarea.value;
   });
   const chips = shell.querySelector("[data-home-chips]");
-  presets.forEach((text) => {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "chip";
-    chip.textContent = text;
-    chip.addEventListener("click", () => {
-      state.question = text;
-      textarea.value = text;
-      textarea.focus();
+  function fillHomeChips(list) {
+    chips.innerHTML = "";
+    list.forEach((text) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.textContent = text;
+      chip.addEventListener("click", () => {
+        state.question = text;
+        textarea.value = text;
+        textarea.focus();
+      });
+      chips.append(chip);
     });
-    chips.append(chip);
+  }
+  fillHomeChips(presets);
+  shell.querySelector("[data-refresh-chips]")?.addEventListener("click", () => {
+    fillHomeChips(pickSuggestedQuestions(5));
+    buzz([4, 8, 4]);
   });
   shell.querySelector("[data-hero-start]")?.addEventListener("click", () => {
     const q = homeQuestionValue();
@@ -912,8 +1010,8 @@ function renderQuestion() {
   box.className = "question-box";
   // 单张速读没有选过主题，给一组通用的好问题；完整流程用主题预设
   const presets = quick
-    ? ["我此刻最需要看见什么？", "关于这件事，我忽略了什么？", "我现在该把力气放在哪里？", "对这个选择，我内心真正的声音是什么？"]
-    : (questions[state.theme] || questions.relationship);
+    ? pickSuggestedQuestions(4)
+    : shuffleArray(questions[state.theme] || questions.relationship).slice(0, 5);
   box.innerHTML = `
     <textarea placeholder="写下你真正想问的那一件事，例如：新主管让我很焦虑，我该不该裸辞？">${state.question}</textarea>
     <p class="field-hint" data-q-hint>带着一个具体的问题抽牌，解读会更有针对性。</p>
@@ -1492,7 +1590,7 @@ function renderReveal() {
           <span class="card-tap-hint">翻开</span>
         </div>
         <div class="face front" aria-hidden="${state.revealed[index] ? "false" : "true"}">
-          <img class="card-image" src="${card.image}" alt="${card.name} ${card.nameEn} 卡面图" draggable="false">
+          ${cardImgTag(card, "card-image")}
         </div>
       </div>
     `;
@@ -1597,7 +1695,7 @@ function renderReport() {
   wrap.className = `shell report theme-${reading.theme || state.theme || "self"}`;
   const cardImages = reading.cards.map((card) => `
     <figure class="mini-card ${card.arcana === "大阿卡那" ? "is-major" : ""}">
-      <img src="${card.image}" alt="${card.name} 卡面图">
+      ${cardImgTag(card)}
       <figcaption>${card.position}</figcaption>
     </figure>
   `).join("");
@@ -1800,7 +1898,7 @@ function renderVisualJourney(reading, { compact = false } = {}) {
   const nodes = cards.map((card, index) => `
     <div class="visual-journey__node ${compact ? "is-compact" : ""}">
       <div class="visual-journey__thumb ${card.arcana === "大阿卡那" ? "is-major" : ""} ${card.orientation === "逆位" ? "is-reversed" : ""}">
-        <img src="${card.image}" alt="${escapeHtml(card.name)}">
+        ${cardImgTag(card)}
         <span class="visual-journey__orient">${card.orientation === "逆位" ? "逆" : "正"}</span>
       </div>
       <span class="visual-journey__pos">${escapeHtml(card.position)}</span>
@@ -1889,7 +1987,7 @@ function renderVisualPositionCards(reading, sections) {
     const media = card
       ? `
         <div class="visual-position__media ${card.arcana === "大阿卡那" ? "is-major" : ""} ${card.orientation === "逆位" ? "is-reversed" : ""}">
-          <img src="${card.image}" alt="${escapeHtml(card.name)}">
+          ${cardImgTag(card)}
           <span class="visual-position__orient">${card.orientation === "逆位" ? "逆位" : "正位"}</span>
         </div>
       `
@@ -2011,7 +2109,7 @@ function renderStoryCardMedia(card) {
   const style = elemColor ? ` style="--story-elem:${elemColor}"` : "";
   return `
     <figure class="story-chapter__card ${card.arcana === "大阿卡那" ? "is-major" : ""} ${card.orientation === "逆位" ? "is-reversed" : ""}"${style}>
-      <img src="${card.image}" alt="${escapeHtml(card.name)} ${card.orientation}">
+      ${cardImgTag(card, "", ` ${card.orientation}`)}
       <figcaption>
         <span class="story-chapter__name">${escapeHtml(card.name)}</span>
         <span class="story-chapter__orient">${escapeHtml(card.orientation)}</span>
@@ -2319,7 +2417,7 @@ function historyItem(item, index) {
     || item.summary?.sections?.at(-1)?.text
     || "愿你慢慢看清自己真正想靠近的方向。";
   const thumbs = (item.cards || []).slice(0, 3).map((card) => `
-    <img class="history-thumb ${card.arcana === "大阿卡那" ? "is-major" : ""}" src="${card.image}" alt="">
+    ${cardImgTag(card, `history-thumb ${card.arcana === "大阿卡那" ? "is-major" : ""}`)}
   `).join("");
   const interaction = item.interaction || {};
   const interactionLine = [
@@ -2411,6 +2509,14 @@ function toast(message) {
   el.textContent = message;
   document.body.append(el);
   setTimeout(() => el.remove(), 2500);
+}
+
+function cardImgTag(card, className = "", altExtra = "") {
+  const src = card.image || `/assets/cards-ai/${card.slug}.png`;
+  const fb = `/assets/cards/${card.slug}.svg`;
+  const alt = `${card.name}${card.nameEn ? ` ${card.nameEn}` : ""} 卡面图${altExtra}`.trim();
+  const cls = className ? ` class="${className}"` : "";
+  return `<img${cls} src="${escapeHtml(src)}" data-fallback="${fb}" onerror="this.onerror=null;this.src=this.dataset.fallback" alt="${escapeHtml(alt)}" draggable="false">`;
 }
 
 function escapeHtml(input) {

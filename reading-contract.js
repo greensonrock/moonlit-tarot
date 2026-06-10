@@ -15,6 +15,7 @@ export function readingCtx(reading) {
 /** 各意图强判断方向（供 Prompt 参考，非固定话术） */
 export const INTENT_VERDICT_HINTS = {
   outcome_forecast: "先答「阶段/走向」（仍在流程中、不是已否、窗口未关），再牌证",
+  win_lose_forecast: "先直接答「偏赢/偏输/五五开/不宜打」之一（必须有明确倾向），再牌证；禁止只说仍在展开、不是已否、先观察",
   partner_attitude: "先答「温度/有没有余地」（偏有温度、偏淡、未说透），再牌证",
   yes_no_decision: "先答「宜/不宜/宜小步」（可以靠近、宜缓半步、不宜猛攻），再牌证",
   binary_choice: "先答「倾向哪边或先核对什么」，再牌证；不打包票",
@@ -62,6 +63,9 @@ export function questionAnchors(reading) {
       anchors.push("走向", "阶段", "会不会", "能不能", "情况", "结果", "未来", "接下来");
       if (ctx.domain === "career") anchors.push("工作", "机会", "流程", "评估", "消息", "面试");
       break;
+    case "win_lose_forecast":
+      anchors.push("赢", "输", "胜算", "顺风", "逆风", "偏", "宜", "不宜", "赢面", "控仓", "重仓", "小注");
+      break;
     case "partner_attitude":
       anchors.push("对方", "他", "她", "感觉", "喜欢", "态度", "心意", "互动", "有没有");
       break;
@@ -97,6 +101,7 @@ export function addressesQuestion(text, reading) {
 
   const intentPatterns = {
     outcome_forecast: /阶段|窗口|流程|展开|评估|走向|趋势|仍在|不是已|未定型|等待|核实/,
+    win_lose_forecast: /偏|倾向|宜|不宜|胜算|顺风|逆风|赢面|控仓|重仓|小注|五五开|有利|不利|不宜打|有胜算/,
     partner_attitude: /温度|互动|靠近|冷淡|辨认|有没有|余地|态度/,
     yes_no_decision: /可以|不宜|宜|暂缓|主动|推进|放下|离开|小步|开口/,
     binary_choice: /核对|条件|标准|试探|偏向|质感|选项/,
@@ -125,6 +130,10 @@ export function reflectionQuestionsFallback(reading) {
   const a = advice?.name || "建议牌";
 
   const byIntent = {
+    win_lose_forecast: [
+      "你更想赢钱，还是更想用一把牌证明自己？",
+      `${b}在拖赢面——是手气、心态，还是纪律先破了？`
+    ],
     outcome_forecast: [
       "哪些信息已确认，哪些还只是你的担心？",
       `${a}指向的下一步——你愿意先核对哪一件事实？`
@@ -167,6 +176,7 @@ export function presentStateFallback(reading, embrace, verdictLead = "") {
   }
 
   const byIntent = {
+    win_lose_forecast: `${e}。牌面已经给了倾向——关键是你能不能按止损线执行。`,
     outcome_forecast: `${e}。事情仍在展开，先分清已确认事实与纯担心。`,
     partner_attitude: `${e}。心意还在辨认期，用互动验证比脑补更接近答案。`,
     yes_no_decision: `${e}。牌在看表达方式，不在否定你在意。`,
@@ -184,6 +194,7 @@ export function presentStateFallback(reading, embrace, verdictLead = "") {
 export function innerTensionFallback(reading) {
   const ctx = readingCtx(reading);
   const byIntent = {
+    win_lose_forecast: "你想靠这一把翻盘，又怕输了更难受——牌在提醒你先管住手，再谈赢面。",
     outcome_forecast: "你想快点有结果，又怕在焦虑里做错判断——这份慎重说明你在认真对待。",
     partner_attitude: "你想靠近确认，又怕主动会打破平衡——在意本身就是在乎。",
     yes_no_decision: "你想推进，又怕方式不对——牌在看表达，不在否定你。",
@@ -198,6 +209,7 @@ export function innerTensionFallback(reading) {
 export function closingLineFallback(reading, adviceFacet = "") {
   const ctx = readingCtx(reading);
   const byIntent = {
+    win_lose_forecast: "把输赢交给纪律，比交给运气更可靠。",
     outcome_forecast: "先核对可验证的事实，再谈时机——别让等待替你做决定。",
     partner_attitude: "用一次真实互动确认，比反复猜更靠近答案。",
     yes_no_decision: "把主动收成一句低压表达，比连环试探更接近答案。",
@@ -220,6 +232,7 @@ export function sharpQuestionFallback(reading, cards = []) {
   const b = block?.name || "阻碍牌";
 
   const byIntent = {
+    win_lose_forecast: "你是在问牌运，还是在问「输了算不算自己不行」？",
     outcome_forecast: "你更怕的是机会没了，还是怕在焦虑里误判了阶段？",
     partner_attitude: "你更想知道对方怎么想，还是更想确认自己值不值得被认真对待？",
     yes_no_decision: "你是在问选择，还是在等一个不用承担代价的许可？",
