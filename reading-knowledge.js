@@ -404,8 +404,14 @@ function majorLine(card, ctx, pos, rev) {
   const row = table?.[family]?.[pos]?.[rev ? "rev" : "up"];
   if (row) return row;
 
-  // 通用大牌回退：原型 + 牌位（不用 imagery）
-  if (pos === "阻碍") return rev ? `${facet}在暗处拖慢节奏` : `主要卡在${facet}——需正视`;
+  // 通用大牌回退：按牌义 + 牌位，不因「阻碍」位硬读成坏事
+  if (pos === "阻碍" || pos === "隐藏因素") {
+    const probe = { ...card, position: pos, orientation: rev ? "逆位" : "正位", keywords: rev ? card.reversed : card.upright };
+    const v = contextualValence(probe, ctx.profile);
+    if (v === "support") return rev ? `${facet}阻滞感在松动` : `阻力较轻，${facet}反而是可用支点`;
+    if (v === "neutral") return rev ? `${facet}还需厘清` : `需留意${facet}带来的张力，不必先往坏处想`;
+    return rev ? `${facet}在暗处拖慢节奏` : `主要卡在${facet}——需正视`;
+  }
   if (pos === "建议") return rev ? `沿${facet}方向，先向内核对` : `朝${facet}迈一小步，并核实反馈`;
   return rev ? `${facet}还未顺畅落地` : `当前主调是${facet}，仍在辨认`;
 }
@@ -435,12 +441,6 @@ export function interpretCardInContext(card, reading) {
     else if (courtBit && line.length < 36) line = `${line}——${courtBit}`;
   }
 
-  // 阻碍位 + 支持极性 → 过度依赖句式
-  const valence = contextualValence(card, ctx.profile);
-  if ((pos === "阻碍" || pos === "隐藏因素") && valence === "support" && !rev) {
-    line = `你把「${facet}」当成唯一支点，反而卡住——${line}`;
-  }
-
   return line.replace(/[；;，,。\s]+$/g, "").trim();
 }
 
@@ -450,12 +450,12 @@ export function positionAnchor(card, reading) {
   const pos = card.position;
 
   const byIntent = {
-    outcome_forecast: { 现状: "就现在这一步，", 阻碍: "卡住进度的是，", 建议: "更值得做的是，" },
-    win_lose_forecast: { 现状: "就胜算起点，", 阻碍: "拉低赢面的是，", 建议: "更稳妥的做法是，" },
-    partner_attitude: { 现状: "就对方态度，", 阻碍: "主要卡在，", 建议: "你可以，" },
+    outcome_forecast: { 现状: "就现在这一步，", 阻碍: "中间这张显示，", 建议: "更值得做的是，" },
+    win_lose_forecast: { 现状: "就胜算起点，", 阻碍: "影响赢面的因素是，", 建议: "更稳妥的做法是，" },
+    partner_attitude: { 现状: "就对方态度，", 阻碍: "需留意的变量是，", 建议: "你可以，" },
     yes_no_decision: { 建议: "就你的问题，", 今日指引: "就你的问题，" },
-    binary_choice: { 现状: "就两个选项，", 阻碍: "真正卡在，", 建议: "更值得先，" },
-    timing: { 现状: "就时间线现在，", 阻碍: "拖住节点的是，", 建议: "可以先，" },
+    binary_choice: { 现状: "就两个选项，", 阻碍: "中间这张指向，", 建议: "更值得先，" },
+    timing: { 现状: "就时间线现在，", 阻碍: "影响节奏的是，", 建议: "可以先，" },
     emotion_regulation: { 现状: "就你现在的感受，", 建议: "就你此刻的需要，" },
     self_clarity: { 现状: "就你此刻的自我状态，", 建议: "就你的成长方向，" }
   };
@@ -527,15 +527,25 @@ export function inferSpreadLead(reading, now, block, advice) {
 
   if (ctx.intent === "outcome_forecast") {
     const topic = careerOffer && /offer|录用|入职/.test(ctx.question) ? "offer" : "这件事";
+    const tally = spreadValenceTally([now, block, advice], p);
     const infoGap = /信息|秘密|未全|猜|保留|策略|沟通|评估|筛选/.test(nowText + blockText);
     const multiLine = /多线|拉扯|失衡|juggling|并行|顾此失彼/.test(blockText);
     const waitPhase = /未齐|偏慢|收集|等待|评估/.test(blockText);
     const positiveNow = nowV === "support" || /打开|正向|加分|窗口/.test(nowText);
 
+    if (tally.support >= 2 && tally.challenge === 0) {
+      return `${topic}牌面偏顺势——底子不错，按建议牌节奏推进即可`;
+    }
+    if (tally.support > tally.challenge && advV === "support") {
+      return `${topic}略偏有利——变量可控，建议牌给出可行出口`;
+    }
     if (infoGap && multiLine) return `${topic}更偏「信息未说透 + 多线拉扯」——不是没戏，要用清晰沟通核验，别靠猜`;
     if (infoGap && waitPhase) return `${topic}走向偏「等待观察期，不是已否」——反馈未齐，别用沉默填最坏答案`;
-    if (positiveNow && blockV === "challenge") return `${topic}更像评估等待期、不是一锤定音——有底子，但阻碍在信息与节奏`;
+    if (positiveNow && blockV === "challenge") return `${topic}更像评估等待期、不是一锤定音——有底子，但变量在信息与节奏`;
     if (blockV === "challenge" && advV !== "challenge") return `${topic}仍在流程中——卡点已明确，建议牌指向可行动的小步`;
+    if (blockV === "support" || blockV === "neutral") {
+      return `${topic}主线仍偏展开中——中间牌未指向硬卡点，按建议牌小步验证`;
+    }
     return `${topic}仍在展开窗、尚未一锤定音——先分清事实与担心，再决定下一步`;
   }
 

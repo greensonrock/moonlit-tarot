@@ -114,12 +114,20 @@ function spreadHonestyHint(reading) {
   if (!cards.length) return "";
   const profile = reading.questionProfile || {};
   const chain = cards.map((c) => `${c.position}·${c.name}(${cardValenceLabel(c, profile)})`).join(" → ");
+  const supportCount = cards.filter((c) => cardValence(c, profile) === "support").length;
   const challengeCount = cards.filter((c) => cardValence(c, profile) === "challenge").length;
-  return `【牌阵基调 · 必守】${chain}。挑战牌 ${challengeCount} 张。
-- 挑战牌：必须点出具体卡点（用关键词），禁止只说「耐心/在路上/别慌/会好的」。
-- 支持牌：写实写出助力，禁止空夸。
+  const neutralCount = cards.length - supportCount - challengeCount;
+  let leanHint = "整体基调中性，按牌面如实展开";
+  if (supportCount > challengeCount) leanHint = "整体基调偏支持，directVerdict 首句可给出偏有利/偏顺势的明确观点";
+  else if (challengeCount > supportCount) leanHint = "整体基调偏挑战，directVerdict 首句可给出偏谨慎/偏不利的明确观点";
+  else if (supportCount === challengeCount && supportCount > 0) leanHint = "支持与挑战并存，首句给平衡但有立场的判断";
+
+  return `【牌阵基调 · 必守】${chain}。支持 ${supportCount} / 挑战 ${challengeCount} / 中性 ${neutralCount}。
+- ${leanHint}；观点必须来自本次抽到的牌，禁止无视牌面一律读悲观或一律读乐观。
+- 挑战牌：点出具体卡点（用该牌关键词），禁止空泛安慰。
+- 支持牌：写实写出助力，支持牌落在「阻碍」位时按该牌义解读，不要硬说成坏事。
 - 中性牌：写观察与待核实项。
-- 每张 positionReadings：结构「如实一句 + 温柔一句」；禁止只报喜，也禁止定命恐吓。`;
+- 每张 positionReadings：结构「如实一句 + 温柔一句」；禁止定命恐吓，也禁止与牌面相反的强行报喜。`;
 }
 
 function soundsOverlyPositive(text) {
@@ -408,7 +416,7 @@ reflectionQuestions 两条须扣本盘牌面与用户原话，禁止通用模板
   lines.push(`【模块绑牌 · 必守 · 去重复 · 如实】
 各模块分工不同，禁止把同一段话换个标题重复粘贴：
 - briefSummary：全篇唯一浓缩（45-80字）。结构：半句接住 + 半句直接结论（可含挑战/中性，禁止空泛「会好的/在路上」）+ 可选半句温柔收尾。
-- presentState：感受 + 一句结论（≤55字），不写牌名；结论须与牌阵基调一致（有挑战牌时不得只报喜）。
+- presentState：感受 + 一句结论（≤55字），不写牌名；结论须与牌阵基调一致（支持牌多时可口头偏暖，挑战牌多时可口头偏谨慎，禁止与牌面相反）。
 - innerTheme：三牌因果链一句（≤56字），把现状→阻碍→建议串成同一主线、并让建议回扣现状那股劲，可含阻力词，不重复 briefSummary。
 - reminders：2-3 条便签（每条≤18字），用关键词；挑战牌可写「阻滞/消耗/延迟」类词。
 - positionReadings：唯一详细解牌处（50-68字）；结合意象与用户问题，像牌师口述；挑战牌写清卡点，支持牌写清助力。
@@ -430,13 +438,17 @@ function pickSpreadHeadline(reading) {
     return block.orientation === "逆位" ? "执念在松动" : "先看见执念";
   }
 
-  if (block && cardValence(block) === "challenge") {
+  if (block) {
+    const bv = cardValence(block);
     const bk = block.keywords?.[0] || "";
-    if (/过度付出|自我忽略|消耗|束缚|内耗|冲突|延迟|阻滞|恐惧|失衡/.test(bk)) {
-      return bk.length <= 12 ? `先处理${bk}` : "先看清主要卡点";
+    if (bv === "support" && bk && bk.length <= 12) return `变量在${bk}`;
+    if (bv === "challenge") {
+      if (/过度付出|自我忽略|消耗|束缚|内耗|冲突|延迟|阻滞|恐惧|失衡/.test(bk)) {
+        return bk.length <= 12 ? `先处理${bk}` : "先看清主要卡点";
+      }
+      if (bk && bk.length <= 12) return bk;
+      return "先正视阻力";
     }
-    if (bk && bk.length <= 12) return bk;
-    return "先正视阻力";
   }
 
   if (sig.choice) return "二选一，先看清卡点";
@@ -717,7 +729,7 @@ function formatCardForPrompt(card) {
 function positionLensHint(position) {
   const map = {
     现状: "描述此刻真实站位，不评判好坏",
-    阻碍: "正视它如何拖住你；好牌落此处常是「过度依赖」",
+    阻碍: "按这张牌自身的正逆位与关键词解读；支持牌落此处可能是假卡点、阻力较轻或变量未说透，不要硬读成坏事",
     建议: "给可落地的姿态，不保证结果",
     对方或外界: "外部/对方状态，需互动验证，不替对方定论",
     隐藏因素: "尚未被看见却在影响判断的暗流",
@@ -747,9 +759,9 @@ function spreadSynthesisHint(reading) {
   const advice = cardByPosition(cards, "建议", "下一步");
   const nowWord = now ? (cardFacetWord(now, reading) || now.keywords?.[0] || now.name) : "";
   const loopNote = now && advice && now !== advice
-    ? `\n- 【同一主线闭环·必守】现状(${now.name})与建议(${advice.name})要落在同一条主线上：现状是「这股劲的起点」，建议是「这股劲的出口」。innerTheme 必须用一句话把三张串成因果链（现状的X → 被阻碍的Y卡住 → 建议把X收成一个动作），不要三张各说各话。建议位的 positionReading 结尾要轻轻回扣【现状牌「${now.name}」自己的核心】（围绕「${nowWord}」展开，例如「也正是把开头那份「${nowWord}」落到实处」）——必须用现状牌的真实含义，禁止照抄示例措辞、禁止出现与现状牌无关的词（如不要凭空写「观望」）。`
+    ? `\n- 【同一主线闭环·必守】现状(${now.name})与建议(${advice.name})要落在同一条主线上：现状是「这股劲的起点」，建议是「这股劲的出口」。innerTheme 必须用一句话把三张串成因果链（现状的X → 中间牌的Y如何影响局面 → 建议把X收成一个动作），Y 按中间牌真实牌义写，不要默认当成卡点。建议位的 positionReading 结尾要轻轻回扣【现状牌「${now.name}」自己的核心】（围绕「${nowWord}」展开，例如「也正是把开头那份「${nowWord}」落到实处」）——必须用现状牌的真实含义，禁止照抄示例措辞、禁止出现与现状牌无关的词（如不要凭空写「观望」）。`
     : "";
-  return `【牌阵能量链】${chain}。写作时按此因果链合参：从现状出发，看见阻碍如何卡住，再从建议找出口；整篇解读须能回答用户原问题。${loopNote}`;
+  return `【牌阵能量链】${chain}。写作时按此因果链合参：从现状出发，读清中间牌的真实牌义（不一定是卡点），再从建议找出口；整篇解读须能回答用户原问题，观点跟牌走。${loopNote}`;
 }
 
 function normalizeStringList(value, maxItems, maxLen, exact) {

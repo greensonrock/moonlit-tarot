@@ -190,9 +190,10 @@ export function contextualValence(card, profile = {}) {
   if (profile.isCareer && card.suitKey === "pentacles") score += 0.3;
   if (profile.isEmotion && card.suitKey === "cups" && rev) score -= 0.3;
 
-  // 5) 牌位透镜：阻碍位即使是「好牌」，也常代表过度依赖→读作卡点
-  if ((pos === "阻碍" || pos === "隐藏因素") && score > 0.2) {
-    return "challenge"; // 你过度倚重的优点，正卡住你
+  // 5) 牌位透镜：极性仍主要由牌义（关键词/正逆/数字）决定，不因牌位强行翻向
+  // 阻碍/隐藏因素位：仅对「略偏支持」的正位好牌轻收一档，不硬改成挑战
+  if ((pos === "阻碍" || pos === "隐藏因素") && score > 0.2 && !rev) {
+    score *= 0.75;
   }
   if (pos === "建议" && score < -0.2 && !rev) {
     // 建议位的难牌：是要你「正视/处理」，归为中性课题而非纯挑战
