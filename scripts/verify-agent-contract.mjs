@@ -43,11 +43,11 @@ try {
   assert.equal(editedReading.trace.modelEdited,true);
   assert.equal(editedReading.trace.ruleFallback,false);
   assert.match(editedReading.output.response.verdict,/还没进场/);
-  let editorialAudits=0, sawEditedDraft=false;
-  globalThis.fetch=async(_url,options)=>{const body=JSON.parse(options.body);const system=body.messages[0].content;const audit=system.includes('独立审稿人，只评价用户最终会读到的 response');const edit=system.includes('口语编辑');if(!audit&&!edit&&body.messages.some(message=>message.role==='assistant'&&message.content.includes('主席台')))sawEditedDraft=true;const content=audit?JSON.stringify({unsupported:editorialAudits++===0?['主席台暗示未提供的准备质量']:[],decision_answered:true,decision_reason:'',quality_ok:true,quality_reason:'',voice_ok:true,voice_reason:''}):edit?JSON.stringify({...output3.response,verdict:'五版计划都坐上主席台了，提案本人还没进场？'}):JSON.stringify(output3);return new Response(JSON.stringify({id:'edited-feedback-test',choices:[{message:{content}}]}),{status:200,headers:{'Content-Type':'application/json'}})};
+  let editorialAudits=0, sawCleanRetry=false;
+  globalThis.fetch=async(_url,options)=>{const body=JSON.parse(options.body);const system=body.messages[0].content;const audit=system.includes('独立审稿人，只评价用户最终会读到的 response');const edit=system.includes('口语编辑');if(!audit&&!edit&&body.messages.some(message=>message.role==='user'&&message.content.includes('上一版未通过复核'))&&!body.messages.some(message=>message.role==='assistant'))sawCleanRetry=true;const content=audit?JSON.stringify({unsupported:editorialAudits++===0?['主席台暗示未提供的准备质量']:[],decision_answered:true,decision_reason:'',quality_ok:true,quality_reason:'',voice_ok:true,voice_reason:''}):edit?JSON.stringify({...output3.response,verdict:'五版计划都坐上主席台了，提案本人还没进场？'}):JSON.stringify(output3);return new Response(JSON.stringify({id:'edited-feedback-test',choices:[{message:{content}}]}),{status:200,headers:{'Content-Type':'application/json'}})};
   const editorialRecovered=await generateTarotAgent(reading3);
   assert.equal(editorialRecovered.trace.attempts,2);
-  assert.equal(sawEditedDraft,true);
+  assert.equal(sawCleanRetry,true);
   let audits=0,generations=0;
   globalThis.fetch=async(_url,options)=>{const body=JSON.parse(options.body);const audit=body.messages[0].content.includes('独立审稿人，只评价用户最终会读到的 response');const content=audit?JSON.stringify({unsupported:audits++===0?['你从没开始']:[],decision_answered:true,quality_ok:true,quality_reason:'',voice_ok:true,voice_reason:'',decision_reason:''}):JSON.stringify({...output,response:{...output.response,verdict:generations++===0?'你从没开始。':'五版计划已经够了，先做五分钟。'}});return new Response(JSON.stringify({id:'test-request',choices:[{message:{content}}]}),{status:200,headers:{'Content-Type':'application/json'}})};
   const corrected=await generateTarotAgent(reading);

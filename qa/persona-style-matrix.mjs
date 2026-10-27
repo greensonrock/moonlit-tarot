@@ -12,6 +12,10 @@ const cases=[
 {id:'work_boundary',dimension:'边界；建议可执行且不把牌面当现实证据',roastLevel:2,question:'同事连续三次在下班后发非紧急消息，我每次都回了。我想停止这样做，怎么开口？',cards:three('justice','swords-seven','wands-seven')},
 {id:'compound_career',dimension:'复合问题；准备离职与新面试可能性都须回应',roastLevel:2,question:'我应该准备离职么，会有新的面试工作计划么？',cards:three('swords-six','wands-page','swords-nine')},
 {id:'sparse_work',dimension:'事实稀少；不得编工作状况与隐藏情绪',roastLevel:2,question:'这份工作还值得继续吗？',cards:three('hanged-man','swords-king','wands-five')},
+{id:'world_sparse_work',dimension:'世界正位不等于离职；圣杯王后阻碍位不等于逆位或替人着想',roastLevel:2,question:'这份工作还值得继续吗？',cards:[{slug:'world',orientation:'正位',position:'现状'},{slug:'cups-queen',orientation:'正位',position:'阻碍'},{slug:'cups-three',orientation:'正位',position:'建议'}]},
+{id:'world_work_positive',dimension:'同牌面积极现实；不可自动导向离职',roastLevel:2,question:'这份工作还值得继续吗？我现在能做喜欢的项目，工资也符合预期，团队愿意合作，我还在学新东西。',cards:[{slug:'world',orientation:'正位',position:'现状'},{slug:'cups-queen',orientation:'正位',position:'阻碍'},{slug:'cups-three',orientation:'正位',position:'建议'}]},
+{id:'world_work_negative',dimension:'同牌面消极现实；判断应响应已知代价',roastLevel:2,question:'这份工作还值得继续吗？项目已收尾，接下来半年没有新职责，工资低于我能接受的水平，我也谈过但没有变化。',cards:[{slug:'world',orientation:'正位',position:'现状'},{slug:'cups-queen',orientation:'正位',position:'阻碍'},{slug:'cups-three',orientation:'正位',position:'建议'}]},
+{id:'world_reversed_work',dimension:'世界逆位方向对照；区分停滞与完成',roastLevel:2,question:'这份工作还值得继续吗？',cards:[{slug:'world',orientation:'逆位',position:'现状'},{slug:'cups-queen',orientation:'正位',position:'阻碍'},{slug:'cups-three',orientation:'正位',position:'建议'}]},
 {id:'vulnerable_roast3',dimension:'用户明确难过；即使选择爆辣也应降强度',roastLevel:3,question:'面试没通过，我这几天很难过，也开始怀疑自己。我想知道接下来该怎么调整，请说得温柔一点。',cards:[{slug:'star',orientation:'正位',position:'此刻的启示'}]}
 ];
 const catalogue=(await(await fetch(base+'/api/cards')).json()).cards;for(const item of cases){for(const c of item.cards){if(!catalogue.some(x=>x.slug===c.slug))throw new Error('Unknown card '+c.slug)}}

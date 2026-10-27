@@ -163,10 +163,10 @@ export const minorArcanaMeanings = {
     actionHint: "浪漫之余，确认一个可执行的小承诺"
   },
   "cups-queen": {
-    upright: ["慈悲包容", "情感成熟", "直觉滋养"],
+    upright: ["情感智慧", "直觉判断", "温和洞察"],
     reversed: ["情绪泛滥", "界限模糊", "过度牺牲"],
-    essence: "温柔力量能疗愈他人，也别忘了自我边界。",
-    actionHint: "在照顾别人之前，先填满自己的杯"
+    essence: "成熟的感受力能看见人和事，也需要与现实信息对照。",
+    actionHint: "倾听感受，也核对事实"
   },
   "cups-king": {
     upright: ["情感稳重", "成熟包容", "克制智慧"],

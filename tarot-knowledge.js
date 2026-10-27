@@ -75,7 +75,7 @@ export const majorKnowledge = {
   月亮: { element: "水", imagery: "月下两塔之间的幽径与暗涌", light: "正视潜意识、让真相浮现", shadow: "迷雾、不安、被想象误导" },
   太阳: { element: "火", imagery: "孩童在向日葵前沐浴阳光", light: "明朗、喜悦、生命力", shadow: "盲目乐观、延迟快乐、信心不足" },
   审判: { element: "火", imagery: "天使吹号，众人自棺中起身回应", light: "觉醒、回应召唤、重生", shadow: "自我批判、不敢回应、困于过去" },
-  世界: { element: "土", imagery: "舞者在花环中央，四元素环绕", light: "完成、整合、阶段性圆满", shadow: "未完成、临门一脚、不愿收尾" }
+  世界: { element: "土", imagery: "舞者在花环中央，四元素环绕", light: "完成与整合、成果与回报、旅程或位置变化", shadow: "停滞、固着、未完成" }
 };
 
 /** 从 slug 取小阿卡那点数键（1–10）或宫廷键 */
