@@ -1,368 +1,118 @@
-import http from "node:http";
-import { readFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { buildCompactFallback, generateAiSummary, mergeAiSummary, isReadingApiConfigured, getReadingApiConfig } from "./ai-reading.js";
-import { cardReadingText, READING_SYNTHESIS_VERSION } from "./reading-synthesis.js";
-import {
-  drawCardsBySelection,
-  drawCardsFromDeck,
-  drawCardsFromTopPicks,
-  getDrawConfig,
-  isTopPickDraw,
-  pickRandom
-} from "./draw-random.js";
-import { getTarotStats, tarotDeck } from "./tarot-data.js";
-import { describeCardWhy, getCardKnowledge } from "./tarot-knowledge.js";
-import { analyzeQuestion, inferMoodFromQuestion, inferThemeFromQuestion } from "./public/question-profile.js";
+import http from 'node:http';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { tarotDeck, getTarotStats, cardImagePath } from './tarot-data.js';
+import { drawCardsFromRitualSelection, drawCardsFromDeck, getDrawConfig } from './draw-random.js';
+import { getReadingApiConfig, isReadingApiConfigured } from './dmx-reading-api.js';
+import { generateTarotAgent, AGENT_VERSION, PERSONA_HASH, SYSTEM_PROMPT_HASH } from './tarot-agent.js';
+import { getCardKnowledge } from './tarot-knowledge.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-async function loadEnvFile() {
-  try {
-    const raw = await readFile(path.join(__dirname, ".env"), "utf8");
-    for (const line of raw.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) continue;
-      const eq = trimmed.indexOf("=");
-      if (eq === -1) continue;
-      const key = trimmed.slice(0, eq).trim();
-      const value = trimmed.slice(eq + 1).trim();
-      // DMXAPI 配置始终以 .env 为准，避免 shell 环境变量覆盖
-      if (key.startsWith("DMXAPI_") || !process.env[key]) {
-        process.env[key] = value;
-      }
-    }
-  } catch {
-    // .env optional when vars are set in the shell
+const root = path.dirname(fileURLToPath(import.meta.url));
+const publicDir = path.join(root, 'public');
+try {
+  const env = await readFile(path.join(root, '.env'), 'utf8');
+  for (const line of env.split('\n')) {
+    const match = line.trim().match(/^([A-Z_][A-Z_0-9]*)=(.*)$/);
+    if (match && (match[1].startsWith('DMXAPI_') || !process.env[match[1]])) process.env[match[1]] = match[2].trim();
   }
-}
-const publicDir = path.join(__dirname, "public");
+} catch {}
 const port = Number(process.env.PORT || 4173);
-const host = process.env.HOST || "0.0.0.0";
+const host = process.env.HOST || '0.0.0.0';
+const positions = { one: ['此刻的启示'], three: ['现状', '阻碍', '建议'] };
+const check = (condition, message) => { if (!condition) throw Object.assign(new Error(message), { statusCode: 422 }); };
+const cardArt = cardImagePath;
 
-const deck = tarotDeck;
+function makeReading(cards, input) {
+  return {
+    date: new Date().toISOString(), question: String(input.question || '').trim(), spread: cards.length === 1 ? 'one' : 'three',
+    roastLevel: Number.isInteger(input.roastLevel) ? input.roastLevel : 2,
+    knownFacts: Array.isArray(input.knownFacts) ? input.knownFacts.slice(0, 10) : [],
+    userMood: typeof input.userMood === 'string' ? input.userMood.slice(0, 120) : '',
+    cards: cards.map(card => ({ ...card, image: cardArt(card.slug) }))
+  };
+}
 
-const spreadPositions = {
-  one: ["今日指引"],
-  three: ["现状", "阻碍", "建议"],
-  four: ["我", "对方或外界", "隐藏因素", "下一步"]
-};
+async function readWithAgent(reading) {
+  check(reading.question.length >= 4 && reading.question.length <= 500, '请用 4–500 个字描述这一次的问题。');
+  const { output, trace } = await generateTarotAgent(reading);
+  const { previousResponse, ...publicReading } = reading;
+  return { ...publicReading, aiPowered: true, agentOutput: output, agentTrace: trace };
+}
 
-const themeLabels = {
-  relationship: "心动与关系",
-  future: "未来与选择",
-  career: "工作与野心",
-  self: "自我与成长",
-  emotion: "情绪与生活"
-};
+async function drawReading(input, interpret = true) {
+  check(['one', 'three'].includes(input.spread), '请选择单牌或三牌。');
+  const count = positions[input.spread].length;
+  if (input.drawMode === 'ritual') {
+    check(Array.isArray(input.selectedSlots) && input.selectedSlots.length === count && new Set(input.selectedSlots).size === count && input.selectedSlots.every(i => Number.isInteger(i) && i >= 0 && i < 78), '抽牌位置无效，请重新确认。');
+    check(Array.isArray(input.deckOrder) && input.deckOrder.length === 78 && new Set(input.deckOrder).size === 78 && input.deckOrder.every(i => Number.isInteger(i) && i >= 0 && i < 78), '洗牌顺序不完整，请重新洗牌。');
+    check(Number.isInteger(input.cutIndex) && input.cutIndex >= 0 && input.cutIndex < 78, '切点无效。');
+  }
+  const config = input.reversals === false ? { ...getDrawConfig(), reverseRate: 0 } : getDrawConfig();
+  const drawn = input.drawMode === 'ritual'
+    ? drawCardsFromRitualSelection(tarotDeck, count, input.selectedSlots, input.cutIndex, config, input.deckOrder)
+    : drawCardsFromDeck(tarotDeck, count, config);
+  const cards = drawn.map(({ card, reversed }, index) => ({ ...card, position: positions[input.spread][index], orientation: reversed ? '逆位' : '正位' }));
+  const reading = makeReading(cards, input);
+  return interpret ? readWithAgent(reading) : reading;
+}
 
-const moodHints = {
-  lost: "你现在可能不是没有答案，而是太想马上听见一个确定的声音。",
-  urgent: "你很想知道结果，这份急切背后也藏着你认真对待自己的心。",
-  calmChaos: "你表面维持着平静，但心里其实已经把很多细节翻来覆去想过。",
-  turning: "你正在期待一个转机，也在试着确认自己是不是还值得继续投入。",
-  release: "你想放下某件事，但真正难的也许是承认它曾经对你很重要。"
-};
-
-async function drawReading({ theme, mood, question, spread, selectedSlots, drawMode }) {
-  const positions = spreadPositions[spread] || spreadPositions.three;
-  const q = question?.trim() || "";
-  const effectiveTheme = theme || inferThemeFromQuestion(q);
-  const effectiveMood = mood || inferMoodFromQuestion(q);
-  const questionProfile = analyzeQuestion(q || "我现在最需要看见什么？", effectiveTheme);
-  const alignedTheme = questionProfile.dominantTheme || effectiveTheme;
-  const drawConfig = getDrawConfig();
-  const useTopPick =
-    drawMode === "top"
-    || drawMode === "fan"
-    || isTopPickDraw(selectedSlots, positions.length);
-  const drawn = useTopPick
-    ? drawCardsFromTopPicks(deck, positions.length, selectedSlots, drawConfig)
-    : Array.isArray(selectedSlots) && selectedSlots.length
-      ? drawCardsBySelection(deck, positions.length, selectedSlots, drawConfig)
-      : drawCardsFromDeck(deck, positions.length, drawConfig);
-  const cards = drawn.map(({ card, reversed }, index) => {
-    const position = positions[index];
-    const drawnCard = {
-      ...card,
-      id: `${card.arcana}-${card.name}`,
-      position,
-      orientation: reversed ? "逆位" : "正位",
-      keywords: reversed ? card.reversed : card.upright
-    };
-    const knowledge = getCardKnowledge(drawnCard);
-    drawnCard.element = drawnCard.element || knowledge?.element || null;
-    drawnCard.imagery = knowledge?.imagery || "";
-    drawnCard.numerologyStage = knowledge?.numerology?.stage || knowledge?.court?.rank || (drawnCard.arcana === "大阿卡那" ? "大阿卡那" : "");
-    drawnCard.why = describeCardWhy(drawnCard, questionProfile);
-    drawnCard.shortHint = reversed
-      ? `逆位：${knowledge?.shadow || "这股能量还没顺畅落地"}，值得认真看一眼。`
-      : (card.actionHint || knowledge?.light || "");
-    return drawnCard;
+async function followupReading(input) {
+  check([1, 3].includes(input.cards?.length), '追问需要沿用完整的原牌阵。');
+  const seen = new Set();
+  const cards = input.cards.map(item => {
+    const card = tarotDeck.find(card => card.slug === item.slug);
+    check(card && !seen.has(card.slug) && ['正位', '逆位'].includes(item.orientation), '原牌阵数据无效。');
+    seen.add(card.slug);
+    return { ...card, position: typeof item.position === 'string' ? item.position.slice(0, 30) : '', orientation: item.orientation };
   });
-
-  const readingCtx = {
-    question: q || "我现在最需要看见什么？",
-    theme: alignedTheme,
-    themeLabel: themeLabels[alignedTheme] || themeLabels[effectiveTheme] || "心动与关系",
-    mood: effectiveMood,
-    questionProfile,
-    cards
-  };
-
-  for (const card of cards) {
-    card.analysis = cardReadingText(card, readingCtx).slice(0, 140);
+  const reading = makeReading(cards, input);
+  reading.conversationSummary = typeof input.conversationSummary === 'string' ? input.conversationSummary.slice(0, 8000) : '';
+  reading.revisionFeedback = typeof input.revisionFeedback === 'string' ? input.revisionFeedback.trim().slice(0, 600) : '';
+  if (reading.revisionFeedback) {
+    check(reading.revisionFeedback.length >= 4, '请具体说出哪句不准确，至少写 4 个字。');
+    const previous = input.previousResponse;
+    check(previous && typeof previous === 'object', '请提供需要校准的上一版解读。');
+    reading.previousResponse = Object.fromEntries(
+      ['verdict', 'analysis', 'advice'].map(key => [key, typeof previous[key] === 'string' ? previous[key].slice(0, 2000) : ''])
+    );
   }
-
-  const reading = {
-    date: new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(new Date()),
-    theme: alignedTheme,
-    themeLabel: themeLabels[alignedTheme] || themeLabels[effectiveTheme] || "心动与关系",
-    mood: effectiveMood,
-    question: q || "我现在最需要看见什么？",
-    spread,
-    cards,
-    questionProfile,
-    summary: buildSummary({ theme: alignedTheme, mood: effectiveMood, question: q, cards, questionProfile }),
-    aiPowered: false
-  };
-
-  if (isReadingApiConfigured()) {
-    try {
-      const ai = await generateAiSummary(reading);
-      if (ai) {
-        reading.summary = mergeAiSummary(reading, ai);
-        reading.aiPowered = true;
-        applyAiPositionAnalysis(reading);
-      }
-    } catch (error) {
-      console.error("AI reading failed:", error.message);
-      reading.aiPowered = false;
-      reading.aiError = "AI 暂时不可用，已显示精简版解读";
-      reading.summary = mergeAiSummary(reading, buildCompactFallback(reading));
-    }
-  } else {
-    reading.summary = mergeAiSummary(reading, buildCompactFallback(reading));
-  }
-
-  return reading;
-}
-
-function applyAiPositionAnalysis(reading) {
-  const items = reading.summary?.aiCompact?.positionReadings;
-  if (!reading.aiPowered || !items?.length) return;
-  for (const card of reading.cards || []) {
-    const item = items.find((p) => p.cardName === card.name && p.position === card.position)
-      || items.find((p) => p.position === card.position);
-    if (!item?.text) continue;
-    const body = item.text.replace(/^[^：:]+[：:]\s*/, "").trim();
-    card.analysis = body.slice(0, 140);
-  }
-}
-
-function buildSummary({ theme, mood, question, cards, questionProfile }) {
-  const themeLabel = themeLabels[theme] || "心动与关系";
-  const profile = questionProfile || analyzeQuestion(question, theme);
-  const majorCount = cards.filter((card) => card.arcana === "大阿卡那").length;
-  const reversedCount = cards.filter((card) => card.orientation === "逆位").length;
-  const names = cards.map((card) => `${card.position}的${card.name}${card.orientation}`).join("、");
-  const first = cards[0];
-  const last = cards[cards.length - 1];
-
-  const atmosphere = majorCount >= 2
-    ? `这次牌面信息很集中，而且有较强的大阿卡那能量，说明「${profile.text}」不只是表层事件，也牵动着你在${themeLabel}里的深层课题。`
-    : `这组牌的氛围很像一封围绕「${profile.text}」展开的信：它没有急着替你下结论，而是在帮你看清${profile.subject}背后真正需要被回应的部分。`;
-
-  const reversedTone = reversedCount
-    ? `牌面里的逆位不是否定你，它更像一个温柔的暂停键，提醒你在${profile.intent}里先看见被忽略的情绪、边界或需求。`
-    : `整体牌面比较顺畅，说明你并不是完全卡住，只是需要围绕${profile.coreNeed}更清醒地整理下一步。`;
-
-  const advice = makeAdvice(theme, cards, profile);
-  const keyword = pickKeyword(cards);
-  const luckyColor = pickLuckyColor(theme);
-  const starLine = makeStarLine(theme, last, profile);
-
-  return {
-    keyword,
-    luckyColor,
-    action: advice[0],
-    sections: [
-      {
-        title: "问题分析",
-        text: `你问的是「${profile.text}」。这更像一个关于「${profile.intent}」的问题，核心不是单纯等一个结果，而是确认${profile.coreNeed}。${profile.caution}。`
-      },
-      {
-        title: "牌面整体氛围",
-        text: `${atmosphere} 你抽到的是${names}。${first.name}把开头的能量点亮，而${last.name}更像这次牌给你的出口。`
-      },
-      {
-        title: "卡片分析",
-        list: cards.map((card) => `${card.position}｜${card.name}${card.orientation}：${card.analysis}`)
-      },
-      {
-        title: "当前状态",
-        text: `${moodHints[mood] || moodHints.lost} 面对「${profile.text}」，你可能一边想保持体面和清醒，一边又希望有人能把复杂的心事说得更明白。`
-      },
-      {
-        title: "隐藏提醒",
-        text: `${reversedTone} 这次牌更希望你看见：真正重要的不是立刻得到一个完美答案，而是确认什么正在滋养你，什么只是反复消耗你。`
-      },
-      {
-        title: "现实建议",
-        list: advice
-      },
-      {
-        title: "今日星语",
-        text: starLine
-      }
-    ]
-  };
-}
-
-function makeAdvice(theme, cards, profile = analyzeQuestion("", theme)) {
-  const byTheme = {
-    relationship: ["不要用反复试探代替真实表达。", "观察对方是否有稳定行动，而不只是短暂的情绪价值。", "保持温柔，但不要放低自己的边界。"],
-    career: ["给自己设定一个 7 天观察期，记录消耗你和滋养你的具体事情。", "先推进一个可见的小成果，再决定是否做更大的改变。", "把期待拆成行动，不要只靠忍耐证明努力。"],
-    future: ["把选择写成两个清单：我害怕失去什么，我真正想靠近什么。", "先做一个低成本尝试，让现实给你更多反馈。", "不要为了立刻安心，急着把未来锁死。"],
-    self: ["今天只修复一个小习惯，不要求自己马上变成全新的样子。", "把注意力从别人怎么看，移回你真实想成为什么样的人。", "给自己一次不解释的休息。"],
-    emotion: ["把最困扰你的情绪写成一句话，不评价它，只命名它。", "减少一次无意义刷新，把十分钟还给身体和呼吸。", "找一个温和的出口，而不是继续假装没事。"]
-  };
-  const base = byTheme[theme] || byTheme.relationship;
-  const cardHint = cards[cards.length - 1]?.actionHint;
-  const first = profile.isDecision
-    ? `把这个问题拆成两个答案：如果继续，你需要看到什么具体变化；如果停止，你要如何保护自己的节奏。`
-    : base[0];
-  const second = profile.isRelationship
-    ? "用一次真诚但不逼迫的表达，替代反复猜测对方的细节。"
-    : profile.isCareer
-      ? "记录三件现实证据：成长空间、回报感、消耗程度，再做判断。"
-      : base[1];
-  return [first, second, cardHint || base[2]];
-}
-
-function pickKeyword(cards) {
-  const pool = cards.flatMap((card) => card.keywords);
-  return pickRandom(pool) || "慢慢确认";
-}
-
-function pickLuckyColor(theme) {
-  return {
-    relationship: "玫瑰月光粉",
-    career: "香槟金",
-    future: "星空蓝",
-    self: "珍珠白",
-    emotion: "雾紫银"
-  }[theme] || "月光银";
-}
-
-function makeStarLine(theme, card, profile = analyzeQuestion("", theme)) {
-  const lines = {
-    relationship: `真正属于你的靠近，不需要你一直猜。`,
-    career: `你不是没有光，只是需要一个更适合发光的位置。`,
-    future: `未来不是被看见的命运，而是你慢慢走出来的方向。`,
-    self: `放下不是输了，而是终于把自己还给自己。`,
-    emotion: `情绪不是麻烦，它是在提醒你哪里需要被温柔照顾。`
-  };
-  if (profile.isDecision) return `答案不急着替你关门，它会先帮你看清哪扇门真的通向自己。`;
-  if (card?.arcana === "大阿卡那") return `${lines[theme] || lines.self} ${card.name}把这句话轻轻递给了你。`;
-  return lines[theme] || lines.self;
+  return readWithAgent(reading);
 }
 
 function sendJson(res, data, status = 200) {
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(data));
 }
-
-async function readBody(req) {
+async function body(req) {
   const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+  let size = 0;
+  for await (const chunk of req) { size += chunk.length; check(size <= 30000, '请求内容过长。'); chunks.push(chunk); }
+  try { return JSON.parse(Buffer.concat(chunks).toString() || '{}'); } catch { throw Object.assign(new Error('请求格式无效。'), { statusCode: 422 }); }
 }
-
-const mime = {
-  ".html": "text/html; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".json": "application/json; charset=utf-8"
-};
+const mime = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.mjs':'text/javascript; charset=utf-8', '.svg':'image/svg+xml', '.json':'application/json', '.png':'image/png', '.jpg':'image/jpeg', '.webp':'image/webp' };
 
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
-    if (req.method === "GET" && url.pathname === "/api/health") {
-      const draw = getDrawConfig();
-      sendJson(res, {
-        status: "ok",
-        service: "moonlit-tarot",
-        synthesisVersion: READING_SYNTHESIS_VERSION,
-        aiEnabled: isReadingApiConfigured(),
-        readingApi: {
-          configured: isReadingApiConfigured(),
-          model: getReadingApiConfig().model,
-          base: getReadingApiConfig().base,
-          keySource: process.env.DMXAPI_READING_KEY ? "DMXAPI_READING_KEY" : process.env.DMXAPI_KEY ? "DMXAPI_KEY" : null
-        },
-        draw: {
-          reverseRate: draw.reverseRate,
-          orientMode: draw.orientMode,
-          rng: "crypto.randomInt"
-        }
-      });
-      return;
+    if (req.method === 'GET' && url.pathname === '/api/health') {
+      return sendJson(res, { status:'ok', service:'moonlit-tarot', aiEnabled:isReadingApiConfigured(), agent:{version:AGENT_VERSION,personaHash:PERSONA_HASH,systemPromptHash:SYSTEM_PROMPT_HASH,model:getReadingApiConfig().model,interpretation:'AI only',ruleFallback:false} });
     }
-    if (req.method === "GET" && url.pathname === "/api/cards") {
-      sendJson(res, {
-        ...getTarotStats(),
-        basis: "Standard Rider-Waite-Smith style 78-card structure: 22 Major Arcana + 56 Minor Arcana, four suits of 14 cards.",
-        cards: deck.map(({ slug, name, nameEn, arcana, suit, image }) => ({ slug, name, nameEn, arcana, suit, image }))
-      });
-      return;
-    }
-    if (req.method === "POST" && url.pathname === "/api/reading") {
-      sendJson(res, await drawReading(await readBody(req)));
-      return;
-    }
-
-    const requested = url.pathname === "/" ? "/index.html" : url.pathname;
-    const normalized = path.normalize(requested).replace(/^(\.\.[/\\])+/, "");
-    const filePath = path.join(publicDir, normalized);
-    const ext = path.extname(filePath);
-    const data = await readFile(filePath);
-    res.writeHead(200, { "Content-Type": mime[ext] || "application/octet-stream" });
-    res.end(data);
+    if (req.method === 'GET' && url.pathname === '/api/cards') return sendJson(res, { ...getTarotStats(), cards:tarotDeck.map(card=>{const {slug,name,nameEn,arcana,suit}=card;const knowledge=getCardKnowledge(card);return {slug,name,nameEn,arcana,suit,image:cardArt(slug),thumbnail:`/assets/cards-atelier-thumbs/${slug}.jpg`,imagery:knowledge?.imagery||'',light:knowledge?.light||'',shadow:knowledge?.shadow||''}}) });
+    if (req.method === 'POST' && url.pathname === '/api/reading') return sendJson(res, await drawReading(await body(req)));
+    if (req.method === 'POST' && url.pathname === '/api/draw') return sendJson(res, await drawReading(await body(req), false));
+    if (req.method === 'POST' && url.pathname === '/api/reading/followup') return sendJson(res, await followupReading(await body(req)));
+    if (req.method !== 'GET' && req.method !== 'HEAD') return sendJson(res, {error:'此操作不受支持。'},405);
+    const requested = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname);
+    const file = path.resolve(publicDir, '.' + requested);
+    if (!file.startsWith(publicDir + path.sep)) return sendJson(res,{error:'Not found'},404);
+    const data = await readFile(file);
+    res.writeHead(200, { 'Content-Type':mime[path.extname(file)] || 'application/octet-stream', 'Cache-Control':path.extname(file)==='.html' ? 'no-store' : 'no-cache' });
+    res.end(req.method === 'HEAD' ? undefined : data);
   } catch (error) {
-    if (error.code === "ENOENT") {
-      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-      res.end("Not found");
-      return;
-    }
-    console.error(error);
-    sendJson(res, { error: "Server error" }, 500);
+    if (error.code === 'ENOENT') return sendJson(res,{error:'Not found'},404);
+    console.error('Request failed:',error.message);
+    sendJson(res, {error:error.statusCode ? error.message : '暂时没有完成这次操作，请稍后重试。'}, error.statusCode || 500);
   }
 });
-
-await loadEnvFile();
-server.listen(port, host, () => {
-  console.log(`Moonlit Tarot is running at http://127.0.0.1:${port}`);
-  if (isReadingApiConfigured()) {
-    const cfg = getReadingApiConfig();
-    console.log(`AI reading: enabled @ ${cfg.base} (${cfg.model})`);
-    console.log(`  key: ${process.env.DMXAPI_READING_KEY ? "DMXAPI_READING_KEY" : "DMXAPI_KEY"}`);
-  } else {
-    console.log("AI reading: template only (set DMXAPI_READING_KEY in .env)");
-  }
-  try {
-    for (const iface of Object.values(os.networkInterfaces())) {
-      for (const addr of iface ?? []) {
-        if (addr.family === "IPv4" && !addr.internal) {
-          console.log(`  LAN access: http://${addr.address}:${port}`);
-        }
-      }
-    }
-  } catch {
-    // In some sandboxed environments, enumerating interfaces may fail; localhost is still valid.
-  }
-});
+server.listen(port,host,()=>console.log(`Moonlit Tarot: http://127.0.0.1:${port} · Agent ${AGENT_VERSION} · AI only`));

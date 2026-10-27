@@ -145,6 +145,35 @@ export function isTopPickDraw(selectedSlots, count) {
   });
 }
 
+/** 洗牌、切牌后从整副 78 张牌中按用户点选的位置无放回抽取。 */
+export function drawCardsFromRitualSelection(deck, count, selectedSlots, cutIndex, config = getDrawConfig(), deckOrder = null) {
+  const validOrder = Array.isArray(deckOrder)
+    && deckOrder.length === deck.length
+    && new Set(deckOrder).size === deck.length
+    && deckOrder.every((index) => Number.isInteger(index) && index >= 0 && index < deck.length);
+  const order = validOrder
+    ? deckOrder.map((index) => ({ card: deck[index], reversed: randomChance(config.reverseRate) }))
+    : deck.map((card) => ({ card, reversed: randomChance(config.reverseRate) }));
+  if (!validOrder) shuffleInPlace(order);
+  const cut = cutIndex !== null && cutIndex !== undefined && Number.isInteger(Number(cutIndex))
+    ? Math.max(1, Math.min(order.length - 1, Number(cutIndex)))
+    : Math.floor(order.length / 2);
+  const cutDeck = [...order.slice(cut), ...order.slice(0, cut)];
+  const seen = new Set();
+  const chosen = [];
+  for (const raw of selectedSlots || []) {
+    const index = Number(raw);
+    if (!Number.isInteger(index) || index < 0 || index >= cutDeck.length || seen.has(index)) continue;
+    seen.add(index);
+    chosen.push(cutDeck[index]);
+    if (chosen.length >= count) break;
+  }
+  for (let index = 0; chosen.length < count && index < cutDeck.length; index += 1) {
+    if (!seen.has(index)) chosen.push(cutDeck[index]);
+  }
+  return chosen;
+}
+
 /** 从数组均匀随机取一项 */
 export function pickRandom(items) {
   if (!items?.length) return null;

@@ -1,5 +1,8 @@
 import { minorArcanaMeanings } from "./minor-arcana-meanings.js";
 
+const reviewedArtV6 = new Set(['cups-six', 'cups-ten', 'pentacles-eight', 'pentacles-ten', 'swords-six', 'swords-ten', 'wands-eight', 'wands-nine']);
+export const cardImagePath = slug => `/assets/cards-atelier-v5/${reviewedArtV6.has(slug) ? 'reviewed-v6/' : ''}${slug}.svg`;
+
 export const majorArcana = [
   ["fool", "愚者", "The Fool", "0", "新的开始", "自由", "冒险", "轻率", "迷失方向", "先允许自己小步出发", "0"],
   ["magician", "魔术师", "The Magician", "I", "主动创造", "资源整合", "显化", "操控", "能量分散", "把想法变成一个具体动作", "I"],
@@ -36,7 +39,7 @@ export const majorArcana = [
   reversed: [r1, r2, `${k1}受阻`],
   girlToneMeaning: `${name}像一束更深的光，提醒你看见这件事背后的核心课题。`,
   actionHint,
-  image: `/assets/cards/${slug}.svg`
+  image: cardImagePath(slug)
 }));
 
 export const suits = [
@@ -121,7 +124,7 @@ function buildMinorCard(suit, [rankKey, rankName, rankEn, count], rankIndex) {
     reversed: [...meta.reversed],
     girlToneMeaning: `${name}：${meta.essence}`,
     actionHint: meta.actionHint,
-    image: `/assets/cards/${slug}.svg`
+    image: cardImagePath(slug)
   };
 }
 
