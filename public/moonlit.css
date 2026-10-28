@@ -46,3 +46,5 @@
 .reading-revision button{justify-self:start;font-size:11px}
 .reading-revision button:disabled{opacity:.55;cursor:wait}
 .reading-revision .error-text{margin:0;font-size:11px}
+
+.question-context { margin: -6px 0 16px; color: #74697f; font-size: 13px; line-height: 1.6; }

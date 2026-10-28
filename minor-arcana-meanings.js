@@ -238,9 +238,9 @@ export const minorArcanaMeanings = {
   },
   "swords-page": {
     upright: ["好奇观察", "新想法", "警觉讯息"],
-    reversed: ["谣言中伤", "鲁莽言语", "多疑猜忌"],
-    essence: "年轻心智敏锐，也易因信息而不安。",
-    actionHint: "核实一条让你焦虑的消息真伪"
+    reversed: ["警觉过度或失准", "言语草率", "准备不足"],
+    essence: "敏锐的观察若缺少准备和分寸，容易让判断抢在事实前面。",
+    actionHint: "先整理事实与问题，再做一次清楚沟通"
   },
   "swords-knight": {
     upright: ["迅捷思考", "直言不讳", "冲锋行动"],
@@ -324,9 +324,9 @@ export const minorArcanaMeanings = {
   },
   "pentacles-page": {
     upright: ["学习务实", "好消息", "踏实好奇"],
-    reversed: ["懒惰拖延", "坏消息", "计划落空"],
-    essence: "少年手捧金币，适合从基础技能学起。",
-    actionHint: "学一个能立刻用上的实用小技能"
+    reversed: ["学习难落地", "注意力散失", "投入方式需调整"],
+    essence: "少年端详手中的金币，提醒把好奇和学习落实为手上做得出的东西。",
+    actionHint: "选一项想学的本事，用实际练习检验进展"
   },
   "pentacles-knight": {
     upright: ["稳健前行", "可靠勤奋", "按部就班"],

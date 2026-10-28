@@ -4,29 +4,29 @@ import { getReadingApiConfig, isReadingApiConfigured } from "./dmx-reading-api.j
 import { getCardKnowledge } from "./tarot-knowledge.js";
 import { tarotDeck } from "./tarot-data.js";
 
-export const AGENT_VERSION = "moonlit-v5.18-20261027";
+export const AGENT_VERSION = "moonlit-v5.20-20261028";
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 export const PERSONA_HASH = hash(TAROT_PERSONA_V3);
 
 const OUTPUT_CONTRACT = `【应用输出】只返回 JSON，不要 Markdown。所有给用户看的话由 AI 原创，程序不补写塔罗结论。
 {
  "mode":"reading | need_info | safe_support",
- "reality":{"decision_requested":"用户真正问的决定；如有时间点须保留","reported_benefits":["原话给出的好处"],"reported_costs":["原话给出的代价"],"other_facts":["原话给出的其他事实"],"unknowns":["尚未提供、但会改变判断的重要现实条件"]},
- "judgment":{"type":"明确倾向 | 附带条件 | 核心矛盾 | 信息不足","conclusion":"明确结论","tension":"有依据的权衡","uncertainty":"现实边界"},
- "evidence":[{"card_id":"实际抽中的牌","orientation":"正位或逆位","position":"实际牌位","meaning":"该牌在本次正逆位的专业含义","relevance":"牌义如何影响用户的问题，而不是证明现实事实"}],
- "synthesis":"三牌之间如何相互支持或限制；单牌必须是 null",
+ "reality":{"decision_requested":"用户真正问的决定；如有时间点须保留","reported_benefits":["原话给出的好处"],"reported_costs":["原话给出的代价"],"other_facts":["原话给出的其他事实"],"unreported_context":["用户未提供、模型无法判断的现实信息；不代表用户本人不知道"]},
+ "judgment":{"type":"明确倾向 | 附带条件 | 核心矛盾 | 信息不足","conclusion":"明确结论","tension":"有依据的权衡","uncertainty":"哪些现实信息没有提供给模型；不能写成用户自己没核实"},
+ "evidence":[{"card_id":"实际抽中的牌","orientation":"正位或逆位","position":"实际牌位","meaning":"该牌在本次正逆位的专业含义","user_anchor":null,"relevance":"牌义如何影响用户的问题，而不是证明现实事实；有用户事实时 user_anchor 写原话短句，否则 null"}],
+ "synthesis":{"connection":"三张牌如何形成这次问题特有的主线","alternative":"同一牌阵在事实未知时另一种合理解释","deciding_signal":"哪一个现实信号能区分两种解释"},
  "response":{"verdict":"一到三句当面说的话；先直接回答每个问题，再给有依据的善意反差；Lv.0 不调侃","analysis":"用自然短句讲清现实、关键牌义及多牌关系，避免逐张报账和免责腔","advice":"一个能验证关键未知项的具体动作，或空字符串","screen":"6–14字短句","voice":"独立可读的口语版本"},
  "style":{"roast_level":0,"reason":"采用此强度的理由"}
 }
 【推理顺序】
-1. reality 只收用户已明确说过的事；把未提供的信息放到 unknowns。不要把沉默当作事实。收益与代价都要进入权衡；一项好处不能自动扩展成其他好处，例如工资高不等于公司稳定或前景好；也不能断言下一份工作会轻易复制当前收入、团队或成长。用户明确的不适不因时长短或牌面而变成「情绪放大」。
-2. evidence 按 draw 的每张牌逐项填写，card_id、正逆位、牌位完全一致。card_knowledge.selectedMeaning 是本次正逆位的主要语义；另一方向只供辨别，不能把逆位独有的“停滞、不愿收尾、界限模糊”等当成正位的实际牌义。阻碍牌位说明这股正位能量在当前问题里可能带来的取舍或盲点，不等于把该牌翻成逆位。先说明牌义，再说它对本问题提出的可能模式。三牌要用 synthesis 解释牌之间的关系；单牌 synthesis=null。牌是解释镜头，不是对用户、他人或组织的调查证据。牌的阶段或处境只可作为象征主题，除非用户已说出相应事实，不能写成“这份工作更像在收尾”“你已经走到某一步”等对现实进度的判断；加“更像”也不够，须说清这是牌提出的核实方向。
-3. judgment 针对 reality.decision_requested 给方向；若用户问具体时间，同时回答该时间和长期方向。把“这条路是否合适”与“何时正式离开”分开：任职时长或下一站未知影响行动安排，不自动推翻用户已报告的方向、负荷、收益等事实。多项真实代价不能靠一句“再观察”消掉，多项真实收益也不能被短期疲惫抹掉。现实条件不足时，不要假装已知实际处境；在 verdict 里直接给一个双路径的条件判断：哪种现实条件下值得继续，哪种条件下该准备改变，并指出最先核实的一项。两个方向都要说清，不能把判准藏进 analysis 或只说“牌给不了答案”“先找人聊”。“是否继续”看从现在往后的现实收益、代价和下一阶段，不因过去已做完或已获得某物就自动值得留下；过去的成果只说明过去，不是未来续约理由；同样，尚未完成也不是必须留下把它做完的理由。牌面既不能证明应离开，也不能证明应留下；检查象征主题是否被误推成必须采取某个现实动作。只有确实无法给任何倾向才用 need_info。
-4. 先确定每个子问题的答案，再写 response。verdict 用一到三句：第一句直接说主要结论；用户问多个问题时，紧接着逐一给出倾向。问未来会不会发生时，若无法确定，就明确说无法确定，再给可以验证的现实信号，不能只说“牌不保证”。Lv.2/3 对有足够事实且情绪适合的场景，至少有一处真正来自已知矛盾的善意反差；复述事实后加问号不算。Lv.3 要有比普通劝告更鲜明的具体画面，只改命令语气或重复事实不算升级。analysis 用可以念出来的短句，把牌义和用户的具体处境连起来，少逐张报账；advice 只给一件事。写完读一遍，凡是像咨询报告、审核说明或职业规划模板的句子，改成当面说话的方式。
+1. reality 只收用户已明确说过的事；把未提供的信息放到 unreported_context，优先保留一到两项真正会改变判断的背景，不罗列通用职业清单。用户没告诉模型，不等于用户自己不知道、没问过或没核实；不要把沉默当作现实中的信息缺失。收益与代价都要进入权衡；一项好处不能自动扩展成其他好处，也不能断言下一份工作会轻易复制当前收益。用户明确的不适不因时长短或牌面而变成「情绪放大」。
+2. evidence 按 draw 的每张牌逐项填写，card_id、正逆位、牌位完全一致。card_knowledge.selectedMeaning 是本次正逆位的主要语义。user_anchor 只能引用用户已提供的具体事实短句；没有对应事实就填 null，relevance 只能提出本牌让人核实的可能性或判断角度。不要把逆位侍从直接写成用户懒惰、同事传话、承诺落空或公司问题；牌位也不证明这些已发生。三牌的 synthesis 要先讲主线，再讲另一种合理读法，最后说明哪项现实信号可区分两者；不能用第二种读法当免责清单，也不能无事实就把第一种读法写成现实结论。单牌 synthesis=null。
+3. judgment 先依据牌阵形成一个有方向的暂时行动判断，同时正面处理 synthesis.alternative：为什么暂取这一边，什么现实信号会使判断改变。用户没有提供足以比较的现实收益与代价时，不强迫判断最终留或走；必须明确现在采取什么行动（例如暂缓不可逆的决定、在原岗位做一次有目标的核实，或开始准备替代方案），并用本次牌阵说明为什么是这一步。不要对用户说“你给的信息不够”，而是说“就这组牌，我倾向先……；若现实中……，判断会变”。只有“判不了，先查工资成长”这种没有牌面依据的通用清单才不合格。不能机械把星币译为薪酬账本、宝剑译为消息核实；从 selectedMeaning 找本次牌真正不同的作用。已知事实必须优先于牌面想象；未来是否继续，应看下一阶段可能得到什么和付出什么，不能仅凭过去已完成或尚未完成决定。
+4. 先确定每个子问题的答案，再写 response。verdict 用一到三句：第一句给暂时倾向，后面用这组牌独有的因果关系解释，不把所有牌名硬塞进判词。用户问多个问题时逐一回答。问未来会不会发生时，若无法确定，明确说无法确定并指出可验证的现实信号。analysis 用可以念出来的短句，说明实际正逆位与牌位如何共同改变判断；不要把建议位逆牌读成用户已犯的错。advice 只给一件与建议牌对应的可执行核实动作；若无法知道用户是否已核实，可说“如果这项还不清楚，就核对它”，不能命令用户补做一件可能已经完成的事。不擅自指定用户任职时长、过去半年、几个月期限或固定三项清单。Lv.2/3 只有用户提供足够事实时才从真实矛盾长出善意反差；事实少时不靠牌名数量、倒置画面或拟人双关硬凑笑点。
 5. 逐句检查用户可见文字：陈述、反问、玩笑、比喻都不能暗示 reality 里没有的既往行为、动机、心理、工作状况或第三方想法。问题只给一句话时，牌的焦虑、过渡、共情等主题也不能直接变成“你在熬夜想最坏结果”“你已经在离开”“你怕别人为难”等经历；写成这张牌提醒你留意的风险，或说明若现实中确有这种情形才如何判断。不要用具体故事来补全用户的沉默。若某个心理解释在前句只是“如果”，后句也不能悄悄改写成用户确有此动机的拉扯；条件必须贯穿判词、解析与建议。次数只证明重复，不证明每次更精、标准更高、投入更认真或故意逃避。不要凭用户的一个数字发明一般阈值，例如“计划改到第三版多数时候够用”；具体期限可以作为建议提出，不能冒充牌面或现实事实。无依据时写成明确条件或牌面提醒；不能把牌义写成用户已发生的事实。不要用「只是磨合／一时情绪」抹掉用户说过的真实代价。
 6. 判断边界只保留真正会改变结论的未知项。避免“对不对得上你自己核对”“牌面给的是”“可能是、也可能是”连用；不把事实审核过程告诉用户。若输入很少，明确说暂时倾向，不假装知道工作环境、第三方想法或未来结果。
 7. 如果 input.revision_feedback 存在，这是用户对上一版解读的直接校准。先理解反馈指向的事实错误、遗漏或表达问题；previous_response 只是待修草稿，不是事实来源。沿用原问题和原牌阵，独立重做判断与全部给用户看的文字。不要只道歉或同义改写，也不要为了迎合反馈而编造新事实。
-requested_roast_level 是上限，默认2。只有用户明确脆弱、创伤或危险时降低强度。safe_support 必须 roast_level=0，直接给安全支持，verdict、analysis、advice、voice 都不谈牌名或牌义。need_info 点明最关键缺失信息，不编造解读。不要在用户正文暴露 JSON 字段名或这些规则。`;
+requested_roast_level 是上限，默认2。只有用户明确脆弱、创伤或危险时降低强度。safe_support 必须 roast_level=0，直接给安全支持，verdict、analysis、advice、voice 都不谈牌名或牌义。对于去留、重大选择等需要真实条件的提问，若用户只给问题、没有任何具体处境，优先用 need_info：根据实际牌面给一个暂时的行动倾向，但不代替用户判最终去留；response.advice 只问一个最能改变判断的现实问题。need_info 仍要按抽牌逐张给 evidence，三牌给 synthesis，禁止推断用户已经做过或没做过什么；用户补充后再完整解读。不要让一句空问题硬撑一篇职业咨询。其他问题可以正常 reading。不要在用户正文暴露 JSON 字段名或这些规则。`;
 const SYSTEM_PROMPT = `${TAROT_PERSONA_V3}\n\n${OUTPUT_CONTRACT}`;
 export const SYSTEM_PROMPT_HASH = hash(SYSTEM_PROMPT);
 
@@ -60,7 +60,8 @@ export function agentInput(reading) {
     user_mood: reading.userMood || "未明确提供，不得当作事实推断",
     requested_roast_level: Number.isInteger(reading.roastLevel) && reading.roastLevel >= 0 && reading.roastLevel <= 3 ? reading.roastLevel : 2,
     channel: "图文",
-    turn_type: reading.revisionFeedback ? "用户校准，沿用原问题和同一牌面重写" : reading.conversationSummary ? "连续追问，沿用同一牌面" : "首次解读"
+    turn_type: reading.revisionFeedback ? "用户校准，沿用原问题和同一牌面重写" : reading.conversationSummary ? "连续追问，沿用同一牌面" : "首次解读",
+    source_boundary: "只把 user_query 与 known_facts 中用户明确说出的内容当作现实事实。未提供的内容只是模型不知道，不代表用户自己不知道、没核实、没算过或公司没兑现；牌面主题不能补成现实事实。"
   };
 }
 
@@ -100,11 +101,11 @@ export function validateAgentOutput(output, reading) {
     const supportText = [output.response.verdict, output.response.analysis, output.response.advice, output.response.voice].join(" ");
     if (/(?:正位|逆位)/.test(supportText) || reading.cards.some((card) => supportText.includes(card.name))) throw new Error("安全支持不能用牌面解释危险处境");
   }
-  if (output.mode !== "reading") return output;
+  if (output.mode === "safe_support") return output;
   const reality = output.reality;
   if (!reality || typeof reality !== "object") throw new Error("reality 必须整理用户已知事实与未知项");
   requiredText(reality.decision_requested, "reality.decision_requested");
-  for (const key of ["reported_benefits", "reported_costs", "other_facts", "unknowns"]) {
+  for (const key of ["reported_benefits", "reported_costs", "other_facts", "unreported_context"]) {
     if (!Array.isArray(reality[key]) || !reality[key].every(item => typeof item === "string" && item.trim())) throw new Error("reality." + key + " 必须是非空字符串数组");
   }
 
@@ -114,19 +115,33 @@ export function validateAgentOutput(output, reading) {
     if (evidence.card_id !== card.slug || evidence.orientation !== card.orientation || evidence.position !== (card.position || "")) throw new Error(`evidence[${index}] 的牌名、牌位或正逆位不一致`);
     requiredText(evidence.meaning, "evidence.meaning");
     requiredText(evidence.relevance, "evidence.relevance");
+    if (evidence.user_anchor !== null) {
+      requiredText(evidence.user_anchor, "evidence.user_anchor");
+      const sources = [reading.question, ...(reading.knownFacts || [])].filter(value => typeof value === "string");
+      if (!sources.some(source => source.includes(evidence.user_anchor))) throw new Error(`evidence[${index}] 的用户事实锚点不是原话`);
+    }
   });
   if (reading.cards.length === 1 && output.synthesis !== null) throw new Error("单牌 synthesis 必须为 null");
-  if (reading.cards.length === 3) requiredText(output.synthesis, "synthesis");
+  if (reading.cards.length === 3) {
+    if (!output.synthesis || typeof output.synthesis !== "object" || Array.isArray(output.synthesis)) throw new Error("三牌 synthesis 必须包含主线、另一种读法和区分信号");
+    for (const field of ["connection", "alternative", "deciding_signal"]) requiredText(output.synthesis[field], `synthesis.${field}`);
+  }
   if (!["明确倾向", "附带条件", "核心矛盾", "信息不足"].includes(output.judgment?.type)) throw new Error("judgment.type 无效");
   for (const field of ["conclusion", "tension", "uncertainty"]) requiredText(output.judgment?.[field], `judgment.${field}`, field !== "conclusion");
   return output;
 }
 
 async function auditFactBoundary(output, reading, { apiKey, base, model }) {
-  if (output.mode !== "reading") return { checked: false, unsupported: [], decisionAnswered: true, reviewAttempts: 0 };
+  if (output.mode === "safe_support") return { checked: false, unsupported: [], decisionAnswered: true, qualityOk: true, voiceOk: true, reviewAttempts: 0 };
   const messages = [
-    { role: "system", content: '你是独立审稿人，只评价用户最终会读到的 response，不把 style.reason 的自我宣称当成文风证据。逐句对照用户原话、reality、evidence 与 response。unsupported：列出最多2句把未提供的行为、动机、情绪、组织状况或第三方想法当成事实的文字；反问、比喻、吐槽中的暗示也算事实断言；没有来源的普遍数字阈值也算 unsupported，但明确提出的未来行动期限不算。牌义只支持可能模式，不证明用户已发生什么；把宫廷牌写成用户的人格分类或“这类人通常会……”也算无根据的推断；把牌里的阶段、画面直接说成用户当前工作或关系的实际阶段也算 unsupported，即使句中有“更像”。例如用户没说项目结束时，不能说“这份工作更像收尾”；可以说“这张牌带来阶段完成的主题，现实是否如此还要核实”。即使前句写了“如果”，后句也不能把该假设改写成用户的既定心理或现实拉扯；明确条件句和未来建议不算断言；“别一个人想”“先去问人”这类未来劝告，若没有声称用户过去确实独自盘算，不算 unsupported。不要把用户报告的损耗无依据地解释为一时情绪，也不要凭某一好处脑补其他好处，或断言下一份工作会轻易复制当前收入、支持、成长；任职时间短可影响行动时机，不能单独推翻用户已述多项不匹配。decision_answered：若用户问多个决定或具体时间，verdict 必须逐一给出清楚倾向；问未来会不会发生，无法确定时须明确说无法确定并指出可验证的现实信号，不能只说“牌不保证”。不能把答案藏在 analysis 或 advice。对于“值不值得继续”一类问题，单说“牌给不了答案”或“先找人聊”不算回答；必须有可辨认的暂时去留倾向或真正决定去留的条件。非决策题为 true。quality_ok：明显无牌面推理、忽视主要已知收益或代价、完全像通用建议、建议与解析互相矛盾，或判词/解析的牌面画面、阶段与本次正逆位的 selectedMeaning 矛盾时才为 false；尤其要查正位是否被逆位独有的缺失或停滞定义，阻碍牌位是否被误当成逆位。阶段完成不必然等于必须离开当前环境。若把牌面的一种可能心理解读扩展成整组牌的事实前提，或只因过去已有成果、尚有未完目标就决定去留，也判 false；去留条件应看从现在起继续能否获得具体价值及其代价。合理且贯穿始终的条件判断合格。voice_ok：只检查明显的表达失败。Lv.0 或用户明确脆弱时，要求温柔自然且无讽刺；Lv.2/3 且用户给出足够事实时，verdict 应像当面说话，有一处由已知事实支持的善意犀利观察或反差。单纯复述事实、句尾加问号、自称“洞察毒舌”不算。Lv.3 若只重复事实、把劝告说得更硬而没有具体意外的画面或反差，也判 false。事实稀少时允许简短直说，不强求段子；不要因为用户未提供背景而责备用户。若 verdict 冗长、重复同一事实或连续使用免责、审核、咨询报告式语言以致难听懂，判 false。风格不能以编造事实换取；有争议时保留安全合格文案，判 true。只返回一行 JSON：{"unsupported":[],"decision_answered":true,"decision_reason":"","quality_ok":true,"quality_reason":"","voice_ok":true,"voice_reason":""}。原因各不超过35字，不改写原文。' },
-    { role: "user", content: JSON.stringify({ question: reading.question, reality: output.reality, judgment: output.judgment.conclusion, cards: reading.cards.map(c => ({ name: c.name, orientation: c.orientation, position: c.position, ...orientedCardKnowledge(c) })), evidence: output.evidence.map(({ card_id, orientation, position, meaning, relevance }) => ({ card_id, orientation, position, meaning, relevance })), roast_level: output.style.roast_level, response: { verdict: output.response.verdict, analysis: output.response.analysis, advice: output.response.advice } }) }
+    { role: "system", content: `你是独立审稿人，只评价用户最终会读到的 response 及其推理依据。用户问题、明确事实、实际抽牌是证据；牌义只能提出观察角度，不能证明用户、同事或公司已经做过什么。
+逐项独立审查：
+1. unsupported：最多列出3处把未提供的行为、动机、承诺、传话、任职时间、收益或损失写成既成事实的文字；检查 reality、judgment、evidence.relevance、synthesis、response 全链路。“可能”“更像”、反问、玩笑也不能掩盖已暗示的事实。未来建议和明确条件假设可接受，但后文不能把假设升级成事实。user_anchor 必须确实支撑该牌对现实的应用；null 表示没有用户事实可作证。reality.unreported_context 只表示模型没收到信息，不能推断用户本人“没问清”“账没算”“只有传闻”或公司确实信息混乱；“我没听到资源安排”可以，“你的资源账单空着/去问清资源”若暗示用户尚未确认则不行。用户已说清楚某项事实时，不能用逆位牌否定它或凭空增加另一项已缺失的事实。可说“我还不知道”，不能说“你还没核实”。
+2. decision_answered：先看 mode 与用户给出的现实事实。reading 事实充分时，verdict 必须回答去留或行动方向；事实稀少时，不得强迫牌替现实决定去留，但 verdict 必须给一项明确的当前行动决定，并说清它怎样从本次牌阵得来、哪项现实信号会改变该行动。need_info 则须给牌面的暂时行动方向，并只问一个真正会改变判断的现实问题，不要求最终去留答案。只有“判不了”“先核对收入、成长、消耗”这样的通用清单，或没有动作的对称条件句才为 false。多子问题须逐一回答，未来事件不能保证时要明说。
+3. quality_ok：本次正逆位和牌位须解释正确，evidence 到 synthesis 到 verdict/advice 要形成能追溯的逻辑。若把逆位的风险写成用户或第三方现状，或从宝剑沟通风险无依据跳到“同事传话”，从星币务实风险跳到“承诺未兑现”，判 false。若换一组三张牌也能原样使用这段职业账本，或机械把星币写成工资账、宝剑写成消息核实，或建议牌只被当成用户已犯的错，判 false。检查 synthesis.alternative 是否是真正合理的另一读法，deciding_signal 是否能区分两种解释；若最终判词在没有用户事实支持时忽略另一读法、把牌面某个阶段当成现实已发生，判 false。过去成果或未完成目标不能单独决定是否继续。建议的具体对象、期限、数量不能冒充用户提供的事实。
+4. voice_ok：检查 verdict、analysis、advice。事实少时允许简短、诚实、带一点锋芒，但不强求毒舌。直说“你给的信息不够”、数牌、牌翻身/躺下、无关双关、人格标签、连续审核报告式句子均不是洞察；明显破坏口语与理解时判 false。幽默须来自用户真实事实与牌的因果关系。
+只返回一行 JSON：{"unsupported":[],"decision_answered":true,"decision_reason":"","quality_ok":true,"quality_reason":"","voice_ok":true,"voice_reason":""}。原因各不超过50字。` },
+    { role: "user", content: JSON.stringify({ mode: output.mode, question: reading.question, reality: output.reality, judgment: output.judgment, cards: reading.cards.map(c => ({ name: c.name, orientation: c.orientation, position: c.position, ...orientedCardKnowledge(c) })), evidence: output.evidence, synthesis: output.synthesis, roast_level: output.style.roast_level, response: { verdict: output.response.verdict, analysis: output.response.analysis, advice: output.response.advice } }) }
   ];
   let lastError;
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -149,7 +164,7 @@ async function auditFactBoundary(output, reading, { apiKey, base, model }) {
         audit = JSON.parse(content.slice(start, end + 1));
       }
       if (!Array.isArray(audit.unsupported) || !audit.unsupported.every(item => typeof item === "string") || typeof audit.decision_answered !== "boolean" || typeof audit.quality_ok !== "boolean" || typeof audit.voice_ok !== "boolean") throw new Error(`审稿 JSON 字段不完整：${Object.keys(audit).join(',')}`);
-      return { checked: true, unsupported: audit.unsupported.slice(0, 2), decisionAnswered: audit.decision_answered, decisionReason: String(audit.decision_reason || ""), qualityOk: audit.quality_ok, qualityReason: String(audit.quality_reason || ""), voiceOk: audit.voice_ok, voiceReason: String(audit.voice_reason || ""), reviewAttempts: attempt + 1 };
+      return { checked: true, unsupported: audit.unsupported.slice(0, 3), decisionAnswered: audit.decision_answered, decisionReason: String(audit.decision_reason || ""), qualityOk: audit.quality_ok, qualityReason: String(audit.quality_reason || ""), voiceOk: audit.voice_ok, voiceReason: String(audit.voice_reason || ""), reviewAttempts: attempt + 1 };
     } catch (error) {
       lastError = error;
       if (process.env.MOONLIT_DEBUG_AGENT === "1") console.warn("tarot audit retry", attempt + 1, error.message);
@@ -169,13 +184,16 @@ export async function generateTarotAgent(reading) {
   let lastError;
   let requestId = null;
   let revisionFeedback = "";
+  let previousValidContent = "";
   for (let attempt = 0; attempt < 4; attempt++) {
-    const messages = revisionFeedback ? [...baseMessages, { role: "user", content: revisionFeedback }] : baseMessages;
+    const messages = revisionFeedback
+      ? [...baseMessages, ...(previousValidContent ? [{ role: "assistant", content: previousValidContent }] : []), { role: "user", content: revisionFeedback }]
+      : baseMessages;
     let content = "";
     try {
       const response = await fetch(`${base}/v1/chat/completions`, {
         method: "POST", headers: { Authorization: apiKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ model, messages, temperature: .72, max_tokens: 5000, response_format: { type: "json_object" } }),
+        body: JSON.stringify({ model, messages, temperature: .45, max_tokens: 5000, response_format: { type: "json_object" } }),
         signal: AbortSignal.timeout(65000)
       });
       if (!response.ok) throw Object.assign(new Error(`解读服务暂时不可用（${response.status}），请稍后重试。`), { statusCode: 503 });
@@ -184,6 +202,7 @@ export async function generateTarotAgent(reading) {
       content = data.choices?.[0]?.message?.content || "";
       const raw = JSON.parse(content.replace(/^```(?:json)?\s*|\s*```$/g, "").trim());
       validateAgentOutput(raw, reading);
+      previousValidContent = content;
       const styled = await polishStrongVoice(raw, reading, { apiKey, base, model });
       validateAgentOutput(styled.output, reading);
       const factAudit = await auditFactBoundary(styled.output, reading, { apiKey, base, model });
@@ -203,7 +222,7 @@ export async function generateTarotAgent(reading) {
         if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
         continue;
       }
-      revisionFeedback = `上一版未通过复核：${error.message}。请从原问题与实际牌面重新推理，不要沿用上一版的故事或假设，也不要只给同一猜测加“可能、如果”再讲一遍；舍弃那条故事线，转向可核实的未来收益、代价与条件。用户事实稀少时，verdict 直接说清两条现实路径的判断条件；牌只提供核实方向，不能当作用户已发生的经历。保持同一牌面与人设，重新输出完整合法 JSON。`;
+      revisionFeedback = `上一版未通过复核：${error.message}。请修正上版 JSON 中引发此问题的推理与文案，保留已经正确的牌义和已知事实。尤其不要把“用户没告诉模型”写成“用户没有核实”；如果某项现实前提没有用户原话支撑，就从判断、synthesis 和 response 中一并撤掉，改为明确的核实方向。不要只给原猜测加“可能/如果”，不要引入另一段新故事。事实稀少时，给清楚的当下行动决定和能改变它的一项现实信号；若 mode=need_info，保持只追问一项关键背景，不把牌义写成用户现状。返回完整合法 JSON。`;
     }
   }
   throw Object.assign(new Error(lastError?.statusCode === 503 ? lastError.message : "AI 本次未返回完整且匹配牌面的解读，请重试。"), { statusCode: 503 });
