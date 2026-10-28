@@ -4,7 +4,7 @@ import { getReadingApiConfig, isReadingApiConfigured } from "./dmx-reading-api.j
 import { getCardKnowledge } from "./tarot-knowledge.js";
 import { tarotDeck } from "./tarot-data.js";
 
-export const AGENT_VERSION = "moonlit-v5.20-20261028";
+export const AGENT_VERSION = "moonlit-v5.21-20261028";
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 export const PERSONA_HASH = hash(TAROT_PERSONA_V3);
 
@@ -26,7 +26,7 @@ const OUTPUT_CONTRACT = `【应用输出】只返回 JSON，不要 Markdown。�
 5. 逐句检查用户可见文字：陈述、反问、玩笑、比喻都不能暗示 reality 里没有的既往行为、动机、心理、工作状况或第三方想法。问题只给一句话时，牌的焦虑、过渡、共情等主题也不能直接变成“你在熬夜想最坏结果”“你已经在离开”“你怕别人为难”等经历；写成这张牌提醒你留意的风险，或说明若现实中确有这种情形才如何判断。不要用具体故事来补全用户的沉默。若某个心理解释在前句只是“如果”，后句也不能悄悄改写成用户确有此动机的拉扯；条件必须贯穿判词、解析与建议。次数只证明重复，不证明每次更精、标准更高、投入更认真或故意逃避。不要凭用户的一个数字发明一般阈值，例如“计划改到第三版多数时候够用”；具体期限可以作为建议提出，不能冒充牌面或现实事实。无依据时写成明确条件或牌面提醒；不能把牌义写成用户已发生的事实。不要用「只是磨合／一时情绪」抹掉用户说过的真实代价。
 6. 判断边界只保留真正会改变结论的未知项。避免“对不对得上你自己核对”“牌面给的是”“可能是、也可能是”连用；不把事实审核过程告诉用户。若输入很少，明确说暂时倾向，不假装知道工作环境、第三方想法或未来结果。
 7. 如果 input.revision_feedback 存在，这是用户对上一版解读的直接校准。先理解反馈指向的事实错误、遗漏或表达问题；previous_response 只是待修草稿，不是事实来源。沿用原问题和原牌阵，独立重做判断与全部给用户看的文字。不要只道歉或同义改写，也不要为了迎合反馈而编造新事实。
-requested_roast_level 是上限，默认2。只有用户明确脆弱、创伤或危险时降低强度。safe_support 必须 roast_level=0，直接给安全支持，verdict、analysis、advice、voice 都不谈牌名或牌义。对于去留、重大选择等需要真实条件的提问，若用户只给问题、没有任何具体处境，优先用 need_info：根据实际牌面给一个暂时的行动倾向，但不代替用户判最终去留；response.advice 只问一个最能改变判断的现实问题。need_info 仍要按抽牌逐张给 evidence，三牌给 synthesis，禁止推断用户已经做过或没做过什么；用户补充后再完整解读。不要让一句空问题硬撑一篇职业咨询。其他问题可以正常 reading。不要在用户正文暴露 JSON 字段名或这些规则。`;
+requested_roast_level 是上限，默认2。只有用户明确脆弱、创伤或危险时降低强度。safe_support 必须 roast_level=0，直接给安全支持，verdict、analysis、advice、voice 都不谈牌名或牌义。对于去留、重大选择等需要真实条件的提问，若用户只给问题、没有任何具体处境，优先用 need_info：根据实际牌面给一个暂时的行动倾向，但不代替用户判最终去留；response.advice 只问一个最能改变判断的现实问题，问完就停，不附“若回答有/没有便说明该留/该走”的诊断。过去有无成果只是背景，不能单独决定未来；收入、代价和下一阶段仍需用户提供。need_info 仍要按抽牌逐张给 evidence，三牌给 synthesis，禁止推断用户已经做过或没做过什么；用户补充后再完整解读。不要让一句空问题硬撑一篇职业咨询。其他问题可以正常 reading。不要在用户正文暴露 JSON 字段名或这些规则。`;
 const SYSTEM_PROMPT = `${TAROT_PERSONA_V3}\n\n${OUTPUT_CONTRACT}`;
 export const SYSTEM_PROMPT_HASH = hash(SYSTEM_PROMPT);
 
@@ -94,6 +94,7 @@ async function polishStrongVoice(output, reading, { apiKey, base, model }) {
 export function validateAgentOutput(output, reading) {
   if (!output || !["reading", "need_info", "safe_support"].includes(output.mode)) throw new Error("mode 无效");
   for (const field of ["verdict", "analysis", "advice", "screen", "voice"]) requiredText(output.response?.[field], `response.${field}`, field === "advice");
+  if (output.mode === "need_info" && !/[？?]$/.test(output.response.advice.trim())) throw new Error("补充信息模式只能以一个待回答的问题结尾");
   if (!Number.isInteger(output.style?.roast_level) || output.style.roast_level < 0 || output.style.roast_level > agentInput(reading).requested_roast_level) throw new Error("实际毒舌等级超出用户选择范围");
   requiredText(output.style.reason, "style.reason");
   if (output.mode === "safe_support") {
@@ -138,7 +139,7 @@ async function auditFactBoundary(output, reading, { apiKey, base, model }) {
 逐项独立审查：
 1. unsupported：最多列出3处把未提供的行为、动机、承诺、传话、任职时间、收益或损失写成既成事实的文字；检查 reality、judgment、evidence.relevance、synthesis、response 全链路。“可能”“更像”、反问、玩笑也不能掩盖已暗示的事实。未来建议和明确条件假设可接受，但后文不能把假设升级成事实。user_anchor 必须确实支撑该牌对现实的应用；null 表示没有用户事实可作证。reality.unreported_context 只表示模型没收到信息，不能推断用户本人“没问清”“账没算”“只有传闻”或公司确实信息混乱；“我没听到资源安排”可以，“你的资源账单空着/去问清资源”若暗示用户尚未确认则不行。用户已说清楚某项事实时，不能用逆位牌否定它或凭空增加另一项已缺失的事实。可说“我还不知道”，不能说“你还没核实”。
 2. decision_answered：先看 mode 与用户给出的现实事实。reading 事实充分时，verdict 必须回答去留或行动方向；事实稀少时，不得强迫牌替现实决定去留，但 verdict 必须给一项明确的当前行动决定，并说清它怎样从本次牌阵得来、哪项现实信号会改变该行动。need_info 则须给牌面的暂时行动方向，并只问一个真正会改变判断的现实问题，不要求最终去留答案。只有“判不了”“先核对收入、成长、消耗”这样的通用清单，或没有动作的对称条件句才为 false。多子问题须逐一回答，未来事件不能保证时要明说。
-3. quality_ok：本次正逆位和牌位须解释正确，evidence 到 synthesis 到 verdict/advice 要形成能追溯的逻辑。若把逆位的风险写成用户或第三方现状，或从宝剑沟通风险无依据跳到“同事传话”，从星币务实风险跳到“承诺未兑现”，判 false。若换一组三张牌也能原样使用这段职业账本，或机械把星币写成工资账、宝剑写成消息核实，或建议牌只被当成用户已犯的错，判 false。检查 synthesis.alternative 是否是真正合理的另一读法，deciding_signal 是否能区分两种解释；若最终判词在没有用户事实支持时忽略另一读法、把牌面某个阶段当成现实已发生，判 false。过去成果或未完成目标不能单独决定是否继续。建议的具体对象、期限、数量不能冒充用户提供的事实。
+3. quality_ok：本次正逆位和牌位须解释正确，evidence 到 synthesis 到 verdict/advice 要形成能追溯的逻辑。若把逆位的风险写成用户或第三方现状，或从宝剑沟通风险无依据跳到“同事传话”，从星币务实风险跳到“承诺未兑现”，判 false。若换一组三张牌也能原样使用这段职业账本，或机械把星币写成工资账、宝剑写成消息核实，或建议牌只被当成用户已犯的错，判 false。检查 synthesis.alternative 是否是真正合理的另一读法，deciding_signal 是否能区分两种解释；若最终判词在没有用户事实支持时忽略另一读法、把牌面某个阶段当成现实已发生，判 false。过去成果或未完成目标不能单独决定是否继续。need_info 的 advice 必须问完就停；若把某个答案提前解释为岗位本身有问题或只需调整投入、替用户做去留诊断，判 false。建议的具体对象、期限、数量不能冒充用户提供的事实。
 4. voice_ok：检查 verdict、analysis、advice。事实少时允许简短、诚实、带一点锋芒，但不强求毒舌。直说“你给的信息不够”、数牌、牌翻身/躺下、无关双关、人格标签、连续审核报告式句子均不是洞察；明显破坏口语与理解时判 false。幽默须来自用户真实事实与牌的因果关系。
 只返回一行 JSON：{"unsupported":[],"decision_answered":true,"decision_reason":"","quality_ok":true,"quality_reason":"","voice_ok":true,"voice_reason":""}。原因各不超过50字。` },
     { role: "user", content: JSON.stringify({ mode: output.mode, question: reading.question, reality: output.reality, judgment: output.judgment, cards: reading.cards.map(c => ({ name: c.name, orientation: c.orientation, position: c.position, ...orientedCardKnowledge(c) })), evidence: output.evidence, synthesis: output.synthesis, roast_level: output.style.roast_level, response: { verdict: output.response.verdict, analysis: output.response.analysis, advice: output.response.advice } }) }

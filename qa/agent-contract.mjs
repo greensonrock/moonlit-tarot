@@ -21,6 +21,7 @@ const tripleOutput={...output,evidence:tripleCards.map(card=>({card_id:card.slug
 assert.strictEqual(validateAgentOutput(tripleOutput,tripleReading),tripleOutput);
 const needInfoOutput={...tripleOutput,mode:'need_info',judgment:{...tripleOutput.judgment,type:'信息不足'},response:{...tripleOutput.response,verdict:'就牌面先别急着决定，补一句真实处境。',advice:'这份工作现在给你什么、让你付出什么？'}};
 assert.strictEqual(validateAgentOutput(needInfoOutput,tripleReading),needInfoOutput);
+assert.throws(()=>validateAgentOutput({...needInfoOutput,response:{...needInfoOutput.response,advice:'你有成长吗？有就说明该留下。'}},tripleReading),/补充信息模式/);
 assert.throws(()=>validateAgentOutput({...needInfoOutput,evidence:[]},tripleReading),/evidence/);
 assert.throws(()=>validateAgentOutput({...tripleOutput,synthesis:{connection:'三牌主线',deciding_signal:'现实信号'}},tripleReading),/synthesis.alternative/);
 assert.throws(()=>validateAgentOutput({...output,reality:{...output.reality,reported_costs:'未结构化'}},reading),/reality.reported_costs/);
